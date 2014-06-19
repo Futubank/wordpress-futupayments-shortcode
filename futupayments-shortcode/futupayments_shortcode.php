@@ -4,20 +4,21 @@
   Plugin URI: https://github.com/Futubank/wordpress-futupayments-shortcode
   Description: Allows you to use Futubank.com payment gateway with the shortcode button.
   Version: 1.0
-*/        
+*/
 
-include(dirname(__FILE__) . '/inc/widget.php');
+//include(dirname(__FILE__) . '/inc/widget.php');
 include(dirname(__FILE__) . '/inc/futubank_core.php');
 
 class _FutupaymentsShortcode {
-
-    const SETTINGS_GROUP = 'futupayments-shortcode-settings-group';
-    const SETTINGS_SLUG = 'futupaymeshortcode';
+    const SETTINGS_GROUP = 'futupayments-shortcode-settings1';
+    const SETTINGS_SLUG = 'futupayments-shortcode';
 
     function __construct() {
         add_action('init',  array($this, 'init'));
         add_action('admin_menu', array($this, 'admin_menu'));
-        add_action('admin_init', array($this, 'admin_init'));
+        if (is_admin()) {
+            add_action('admin_init', array($this, 'admin_init'));
+        }
     }
 
     function init() {
@@ -29,15 +30,15 @@ class _FutupaymentsShortcode {
             __('Payments via Futubank.com', 'futupayments_shortcode'),
             'Futupayments Shortcode',
             'manage_options',
-            $this->SETTINGS_SLUG, 
+            self::SETTINGS_SLUG, 
             array($this, 'settings_page')
         );
     }
 
     function settings_page() { ?>
         <form action="options.php" method="post">
-            <?php settings_fields($this->SETTINGS_GROUP); ?>
-            <?php do_settings_sections($this->SETTINGS_SLUG); ?>
+            <?php settings_fields(self::SETTINGS_GROUP); ?>
+            <?php do_settings_sections(self::SETTINGS_SLUG); ?>
             <p class="submit">
                 <input type="submit" name="submit" id="submit" class="button button-primary" value="<?php echo __('Save Changes'); ?>">
             </p>
@@ -45,40 +46,80 @@ class _FutupaymentsShortcode {
     <?php }
 
     function admin_init() {        
-        //register_setting($this->OPTION_GROUP, $option_name);
+        register_setting(self::SETTINGS_GROUP, self::SETTINGS_GROUP);
         add_settings_section(
-            $this->OPTION_GROUP, 
+            self::SETTINGS_GROUP, 
             __('Payments via Futubank.com', 'futupayments_shortcode'), 
             array($this, 'settings_intro_text'),
-            $this->SETTINGS_SLUG
+            self::SETTINGS_SLUG
         );
         add_settings_field(
             'merchant_id', 
             __('Merchant ID', 'futupayments_shortcode'), 
-            array($this, 'setting_string'), 
-            $this->SETTINGS_SLUG,
-            $this->SETTINGS_GROUP,
+            array($this, 'char_field'), 
+            self::SETTINGS_SLUG,
+            self::SETTINGS_GROUP,
             array('id' => 'merchant_id')
         );
-        // add_settings_field('futupayments_shortcode_key1', __('Key #1','futupayments_shortcode'), 'futupayments_shortcode_setting_string', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'key1'));
-        // add_settings_field('futupayments_shortcode_key2', __('Key #2','futupayments_shortcode'), 'futupayments_shortcode_setting_string', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'key2'));
-        // add_settings_field('futupayments_shortcode_test', __('Test mode','futupayments_shortcode'), 'futupayments_shortcode_setting_check', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'test'));
-        // add_settings_field('futupayments_shortcode_success_url', __('Success url','futupayments_shortcode'), 'futupayments_shortcode_setting_string', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'success_url'));
-        // add_settings_field('futupayments_shortcode_fail_url', __('Fail url','futupayments_shortcode'), 'futupayments_shortcode_setting_string', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'fail_url'));
-        // add_settings_field('futupayments_shortcode_sitepass', __('Site password','futupayments_shortcode'), 'futupayments_shortcode_setting_string', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'sitepass'));
-        // add_settings_field('futupayments_shortcode_send', __('Send email to admin','futupayments_shortcode'), 'futupayments_shortcode_setting_check', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'send'));
-        // add_settings_field('futupayments_shortcode_email', __('Email body','futupayments_shortcode'), 'futupayments_shortcode_setting_text', 'futupayments_shortcode_config', 'futupayments_shortcode-settings-group',array('id'=>'email'));
+        add_settings_field(
+            'secret_key', 
+            __('Secret key', 'futupayments_shortcode'), 
+            array($this, 'char_field'), 
+            self::SETTINGS_SLUG,
+            self::SETTINGS_GROUP,
+            array('id' => 'secret_key')
+        );
+        add_settings_field(
+            'test_mode', 
+            __('Test mode1', 'futupayments_shortcode'), 
+            array($this, 'boolean_field'), 
+            self::SETTINGS_SLUG,
+            self::SETTINGS_GROUP,
+            array('id' => 'test_mode')
+        );
+        add_settings_field(
+            'success_url', 
+            __('Success URL', 'futupayments_shortcode'), 
+            array($this, 'char_field'), 
+            self::SETTINGS_SLUG,
+            self::SETTINGS_GROUP,
+            array('id' => 'success_url')
+        );
+        add_settings_field(
+            'fail_url', 
+            __('Fail URL', 'futupayments_shortcode'), 
+            array($this, 'char_field'), 
+            self::SETTINGS_SLUG,
+            self::SETTINGS_GROUP,
+            array('id' => 'fail_url')
+        );
     }
 
     function settings_intro_text() {
         # FIXME
-        echo '';  
+        echo ''; 
     }
 
-    function setting_string($args) {
-        $options = get_option($this->OPTION_GROUP);
-        $key = 'futupayments_shortcode_' . $args['id'];
-        echo '<input id="' . $key . '" name="' . $this->SETTINGS_GROUP . '[' . $key . '] size="40" type="text" value="' . $options[$key] . '">';
+    private function get_options() {
+        return get_option(self::SETTINGS_GROUP, array(
+            'merchant_id' => '',
+            'secret_key'  => '',
+            'success_url' => 'https://secure.futubank.com/success',
+            'fail_url'    => 'https://secure.futubank.com/fail',
+            'test_mode'   => 'on',
+        ));
+    }
+
+    function char_field($args) {
+        $options =  $this->get_options();
+        echo '<input name="' . self::SETTINGS_GROUP . '[' . $args['id'] . ']"' . 
+             ' type="text" size="40" value="' . $options[$args['id']] . '">';
+    }
+
+    function boolean_field($args) {
+        $options =  $this->get_options();
+        echo '<input name="' . self::SETTINGS_GROUP . '[' . $args['id'] . ']"' . 
+             ' type="checkbox" value="on" ' . checked($options[$args['id']], 'on', false) . '>';
     }
 }
 
@@ -182,27 +223,6 @@ function rksk_add_icon() {
  	echo "<img src='{$icon_url}' /></a>";
 }
 
-
-function futupayments_shortcode_register_settings() {
- 	}
-
-
-
-
-function futupayments_shortcode_setting_text($id) {
-	$options = get_option('futupayments_shortcode-settings-group');
-	$id=$id['id'];
-	echo "<textarea id='futupayments_shortcode_{$id}' name='futupayments_shortcode-settings-group[futupayments_shortcode_{$id}]' cols='70' rows='10'>".$options['futupayments_shortcode_'.$id]."</textarea>"; 
-}
-
-function futupayments_shortcode_setting_check($id) {
-	$options = get_option('futupayments_shortcode-settings-group');
-	$id=$id['id'];
-	if($options['futupayments_shortcode_'.$id]==1){
-		$val='checked';
-	}
-	echo "<input id='futupayments_shortcode_{$id}' name='futupayments_shortcode-settings-group[futupayments_shortcode_{$id}]' type='checkbox' value='1' {$val}/>";
-}
 
 function futupayments_shortcode_robokassa_sc($attr) {
 	 // $fid=rand();
