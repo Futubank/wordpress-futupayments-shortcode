@@ -9,7 +9,7 @@
  * $ff = new FutubankForm($merchant_id, $secret_key, $is_test);
  *
  * // URL для отправки формы:
- * $url = $ff->get_url()
+ * $url = $ff->get_url();
  *
  * // значения полей формы
  * $form = compose(
@@ -21,7 +21,9 @@
  *     $client_phone,  // телефон клиента (может быть '')
  *     $success_url,   // URL, куда направить клиента при успешной оплате
  *     $fail_url,      // URL, куда направить клиента при ошибке
- *     $cancel_url     // URL текущей страницы
+ *     $cancel_url,    // URL текущей страницы
+ *     $meta,          // дополнительная информация в свободной форме (необязательно)
+ *     $desctiption    // описание (необязательно)
  * );
  *
  * // далее можно самостоятельно вывести $form в виде hidden-полей,
@@ -61,15 +63,19 @@ class FutubankForm {
         $success_url,
         $fail_url,
         $cancel_url,
-        $meta=''
+        $meta='',
+        $description=''
     ) {
+        if (!$description) {
+            $description = "Заказ №$order_id";
+        }
         $form = array(
             'merchant'       => $this->merchant_id,
             'unix_timestamp' => time(),
             'salt'           => $this->get_salt(32),
             'amount'         => $amount,
             'currency'       => $currency,
-            'description'    => "Заказ №$order_id",
+            'description'    => $description,
             'order_id'       => $order_id,
             'client_email'   => $client_email,
             'client_name'    => $client_name,
@@ -103,12 +109,12 @@ class FutubankForm {
         return $result;
     }
 
-    private function get_signature(array $params) {
+    public function get_signature(array $params, $key = 'signature') {
         $keys = array_keys($params);
         sort($keys);
         $chunks = array();
         foreach ($keys as $k) {
-            if ($params[$k] && ($k != 'signature')) {
+            if ($params[$k] && ($k != $key)) {
                 $chunks[] = $k . '=' . base64_encode($params[$k]);
             }
         }
