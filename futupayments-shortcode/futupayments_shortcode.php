@@ -21,16 +21,18 @@ class _FutupaymentsShortcode {
     const FAIL_URL    = '/?futupayment-fail';
     const SUBMIT_URL  = '/?futupayment-submit';
 
-    const TABLE_PREFIX = 'futupayments';
-
     private $templates_dir;
+    private $db_prefix;
 
     function __construct() {
+        global $wpdb;
+        $this->db_prefix = $wpdb->prefix . 'futupayments_';    
         $this->templates_dir = dirname(__FILE__) . '/templates/';
+
         add_action('init',  array($this, 'init'));
-        add_action('admin_menu', array($this, 'admin_menu'));
         add_shortcode('futupayment', array($this, 'futupayment'));
         if (is_admin()) {
+            add_action('admin_menu', array($this, 'admin_menu'));
             add_action('plugins_loaded',  array($this, 'plugins_loaded'));
             add_action('admin_init', array($this, 'admin_init'));
         }
@@ -77,7 +79,7 @@ class _FutupaymentsShortcode {
         $ff = $this->get_futubank_form();
 
         if (!$ff) {
-            return __('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments_shortcode');
+            return __('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments');
         }
 
         $atts = shortcode_atts(array(
@@ -87,15 +89,15 @@ class _FutupaymentsShortcode {
         ), $atts);
 
         if (!$atts['amount']) {
-            return __('FUTUPAYMENT ERROR: amount required', 'futupayments_shortcode');
+            return __('FUTUPAYMENT ERROR: amount required', 'futupayments');
         }
 
         if (!$atts['currency']) {
-            return __('FUTUPAYMENT ERROR: currency required', 'futupayments_shortcode');
+            return __('FUTUPAYMENT ERROR: currency required', 'futupayments');
         }
 
         if (!$atts['description']) {
-            return __('FUTUPAYMENT ERROR: description required', 'futupayments_shortcode');
+            return __('FUTUPAYMENT ERROR: description required', 'futupayments');
         }
 
         $atts['page_url'] = get_home_url() . $_SERVER['REQUEST_URI'];
@@ -119,40 +121,51 @@ class _FutupaymentsShortcode {
     }
 
     function init() {
-        load_plugin_textdomain('futupayments_shortcode', false, dirname(plugin_basename(__FILE__)) . '/languages');
+        load_plugin_textdomain('futupayments', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
     function admin_menu() { 
         add_options_page(
-            __('Payments via Futubank.com', 'futupayments_shortcode'),
+            __('Payments via Futubank.com', 'futupayments'),
             'Futupayments Shortcode',
             'manage_options',
             self::SETTINGS_SLUG, 
             array($this, 'settings_page')
         );
+        add_menu_page(
+            __('Orders and payments', 'futupayments'),
+            __('Orders and payments', 'futupayments'),
+            'manage_options',
+            'list',
+            array($this, 'list_page'),
+            '',
+            6
+        );
     }
 
-    function settings_page() { ?>
-        <form action="options.php" method="post">
-            <?php settings_fields(self::SETTINGS_GROUP); ?>
-            <?php do_settings_sections(self::SETTINGS_SLUG); ?>
-            <p class="submit">
-                <input type="submit" name="submit" id="submit" class="button button-primary" value="<?php echo __('Save Changes'); ?>">
-            </p>
-        </form>
-    <?php }
+    function list_page() { 
+        global $wpdb;
+        $rows = $wpdb->get_results('SELECT * FROM ' . $this->db_prefix . 'order ORDER BY id DESC', ARRAY_A);
+        include $this->templates_dir . 'list.php';
+    }
+
+    function settings_page() {
+        $group = self::SETTINGS_GROUP;
+        $slug = self::SETTINGS_SLUG;
+        include $this->templates_dir . 'settings.php';
+    }
 
     function admin_init() {
         register_setting(self::SETTINGS_GROUP, self::SETTINGS_GROUP);
         add_settings_section(
             self::SETTINGS_GROUP, 
-            __('Payments via Futubank.com', 'futupayments_shortcode'), 
+            __('Payments via Futubank.com', 'futupayments'), 
             array($this, 'settings_intro_text'),
             self::SETTINGS_SLUG
         );
         add_settings_field(
             'merchant_id', 
-            __('Merchant ID', 'futupayments_shortcode'), 
+            __('Merchant ID', 'futupayments'), 
             array($this, 'char_field'), 
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
@@ -160,7 +173,7 @@ class _FutupaymentsShortcode {
         );
         add_settings_field(
             'secret_key', 
-            __('Secret key', 'futupayments_shortcode'), 
+            __('Secret key', 'futupayments'), 
             array($this, 'char_field'), 
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
@@ -168,7 +181,7 @@ class _FutupaymentsShortcode {
         );
         add_settings_field(
             'test_mode', 
-            __('Test mode', 'futupayments_shortcode'), 
+            __('Test mode', 'futupayments'), 
             array($this, 'boolean_field'), 
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
@@ -176,7 +189,7 @@ class _FutupaymentsShortcode {
         );
         add_settings_field(
             'success_url', 
-            __('Success URL', 'futupayments_shortcode'), 
+            __('Success URL', 'futupayments'), 
             array($this, 'char_field'), 
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
@@ -184,7 +197,7 @@ class _FutupaymentsShortcode {
         );
         add_settings_field(
             'fail_url', 
-            __('Fail URL', 'futupayments_shortcode'), 
+            __('Fail URL', 'futupayments'), 
             array($this, 'char_field'), 
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
@@ -192,7 +205,7 @@ class _FutupaymentsShortcode {
         );
         add_settings_field(
             'pay_button_text', 
-            __('Pay button text', 'futupayments_shortcode'), 
+            __('Pay button text', 'futupayments'), 
             array($this, 'char_field'), 
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
@@ -244,54 +257,79 @@ class _FutupaymentsShortcode {
         return $result;
     }
 
-    private function get_new_order_id() {
-        return time();
+    private function create_order(array $h) {
+        $order = array(
+            'amount'            => $h['amount'],
+            'currency'          => $h['currency'],
+            'description'       => $h['description'],
+            'client_email'      => self::get($h, 'client_email', ''),
+            'client_name'       => self::get($h, 'client_name', ''),
+            'client_phone'      => self::get($h, 'client_phone', ''),
+            'creation_datetime' => current_time('mysql'),
+        );
+
+        global $wpdb;
+        $wpdb->insert($this->db_prefix . 'order', $order, array(
+            '%s',
+            '%s', 
+            '%s', 
+            '%s', 
+            '%s', 
+            '%s', 
+            '%s',
+        )) or die(__('FUTUPAYMENT ERROR: can\'t create order', 'futupayments'));
+        $order['id'] = $wpdb->insert_id;
+
+        return $order;
     }
 
     private function submit_page() {
-        $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments_shortcode'));
+        $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments'));
+        
         $h = array();
         foreach ($this->get_invoice_hidden_fields() as $k) {
             $h[$k] = self::get($_POST, $k);
         }
 
         if ($ff->get_signature($h) != self::get($_POST, 'signature')) {
-            die(__('FUTUPAYMENT ERROR: incorrect data', 'futupayments_shortcode'));
+            die(__('FUTUPAYMENT ERROR: incorrect data', 'futupayments'));
         }
 
         $options = $this->get_options();
+        $order = $this->create_order($_POST);
+        $meta = '';
+
         $data = $ff->compose(
-            $_POST['amount'],
-            $_POST['currency'],
-            $this->get_new_order_id(),
-            self::get($_POST, 'client_email', ''),
-            self::get($_POST, 'client_name', ''),
-            self::get($_POST, 'client_phone', ''),
+            $order['amount'],
+            $order['currency'],
+            $order['id'],
+            $order['client_email'],
+            $order['client_name'],
+            $order['client_phone'],
             $options['success_url'],
             $options['fail_url'],
             $_POST['page_url'],
-            '',
-            $_POST['description']
+            $meta,
+            $order['description']
         );
+
         include $this->templates_dir . 'submit.php';
     }
 
     private function success_page() {
-        $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments_shortcode'));
+        $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments'));
         echo 'success!';
     }
 
     private function fail_page() {
-        $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments_shortcode'));
+        $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments'));
         echo 'fail!';
     }
 
     private function create_plugin_tables() {
-        global $wpdb;
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        $prefix = $wpdb->prefix . self::TABLE_PREFIX;
         dbDelta("
-            CREATE TABLE `${prefix}_payment` (
+            CREATE TABLE `" . $this->db_prefix . "payment` (
                 `id` integer AUTO_INCREMENT NOT NULL,
                 `creation_datetime` datetime NOT NULL,
                 `transaction_id` bigint NOT NULL,
@@ -306,7 +344,7 @@ class _FutupaymentsShortcode {
             );
         ");
         dbDelta("
-            CREATE TABLE `${prefix}_order` (
+            CREATE TABLE `" . $this->db_prefix . "order` (
                 `id` integer AUTO_INCREMENT NOT NULL,
                 `creation_datetime` datetime NOT NULL,
                 `amount` numeric(10, 2) NOT NULL,
