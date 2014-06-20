@@ -12,24 +12,36 @@ if (!class_exists('FutubankForm')) {
 }
 
 class _FutupaymentsShortcode {
-    const SETTINGS_GROUP = 'futupayments-shortcode-settings1';
+    const DB_VERSION = '1.0';
+
+    const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
     const SETTINGS_SLUG = 'futupayments-shortcode';
     
     const SUCCESS_URL = '/?futupayment-success';
     const FAIL_URL    = '/?futupayment-fail';
     const SUBMIT_URL  = '/?futupayment-submit';
 
+    const TABLE_PREFIX = 'futupayments';
+
     private $templates_dir;
 
     function __construct() {
+        $this->templates_dir = dirname(__FILE__) . '/templates/';
         add_action('init',  array($this, 'init'));
         add_action('admin_menu', array($this, 'admin_menu'));
         add_shortcode('futupayment', array($this, 'futupayment'));
         if (is_admin()) {
+            add_action('plugins_loaded',  array($this, 'plugins_loaded'));
             add_action('admin_init', array($this, 'admin_init'));
         }
         add_action('parse_request', array($this, 'parse_request'));
-        $this->templates_dir = dirname(__FILE__) . '/templates/';
+    }
+
+    function plugins_loaded() {
+        if (get_site_option('futupayment_db_version') != self::DB_VERSION) {
+            $this->create_plugin_tables();
+            update_site_option('futupayment_db_version', self::DB_VERSION);
+        }
     }
 
     function parse_request() {
@@ -43,10 +55,15 @@ class _FutupaymentsShortcode {
                 exit();
             }
         }
-        // echo $_SERVER['REQUEST_URI'];
-        // exit();
     }
 
+    function myplugin_update_db_check() {
+        global $jal_db_version;
+        if (get_site_option( 'jal_db_version' ) != $jal_db_version) {
+            jal_install();
+        }
+    }
+    
     private function get_invoice_hidden_fields() {
         return array(
             'amount',
@@ -90,6 +107,7 @@ class _FutupaymentsShortcode {
         $atts['signature'] = $ff->get_signature($h);
 
         $options = $this->get_options();
+
         return (
             '<form action="' . self::SUBMIT_URL . '" method="post">' .
                 FutubankForm::array_to_hidden_fields($atts) .
@@ -201,24 +219,29 @@ class _FutupaymentsShortcode {
 
     private function get_futubank_form() {
         $options = $this->get_options();
-        if (!$options['merchant_id'] || !$options['secret_key']) {
-            return false;
+        if ($options['merchant_id'] && $options['secret_key']) {
+            return new FutubankForm($options['merchant_id'], $options['secret_key'], $options['test_mode']);
         } else {
-            return new FutubankForm(
-                $options['merchant_id'], $options['secret_key'], $options['is_test']
-            );
+            return false;
         }
     }
     
     private function get_options() {
-        return get_option(self::SETTINGS_GROUP, array(
+        $result = get_option(self::SETTINGS_GROUP);
+        if (!$result) {
+            $result = array();
+        }
+        foreach (array(
             'merchant_id'     => '',
             'secret_key'      => '',
             'success_url'     => 'https://secure.futubank.com/success',
             'fail_url'        => 'https://secure.futubank.com/fail',
             'test_mode'       => 'on',
             'pay_button_text' => __('Pay from card'),
-        ));
+        ) as $k => $v) {
+            $result[$k] = self::get($result, $k, $v);
+        }
+        return $result;
     }
 
     private function get_new_order_id() {
@@ -262,6 +285,41 @@ class _FutupaymentsShortcode {
         $ff = $this->get_futubank_form() or die(__('FUTUPAYMENT ERROR: plugin is not configured', 'futupayments_shortcode'));
         echo 'fail!';
     }
+
+    private function create_plugin_tables() {
+        global $wpdb;
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        $prefix = $wpdb->prefix . self::TABLE_PREFIX;
+        dbDelta("
+            CREATE TABLE `${prefix}_payment` (
+                `id` integer AUTO_INCREMENT NOT NULL,
+                `creation_datetime` datetime NOT NULL,
+                `transaction_id` bigint NOT NULL,
+                `testing` bool NOT NULL,
+                `amount` numeric(10, 2) NOT NULL,
+                `currency` varchar(3) NOT NULL,
+                `order_id` varchar(128) NOT NULL,
+                `state` varchar(10) NOT NULL,
+                `message` longtext NOT NULL,
+                `meta` longtext NOT NULL,
+                UNIQUE (`state`, `transaction_id`)
+            );
+        ");
+        dbDelta("
+            CREATE TABLE `${prefix}_order` (
+                `id` integer AUTO_INCREMENT NOT NULL,
+                `creation_datetime` datetime NOT NULL,
+                `amount` numeric(10, 2) NOT NULL,
+                `currency` varchar(3) NOT NULL,
+                `description` longtext NOT NULL,
+                `client_email` varchar(120) NOT NULL,
+                `client_name` varchar(120) NOT NULL,
+                `client_phone` varchar(30) NOT NULL
+            );
+        ");
+    }
+
+    ## helpers ##
 
     private static function get(array $hash, $key, $default=null) {
         if (array_key_exists($key, $hash)) {

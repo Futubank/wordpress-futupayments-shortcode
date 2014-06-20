@@ -42,7 +42,7 @@ class FutubankForm {
     public function __construct($merchant_id, $secret_key, $is_test) {
         $this->merchant_id = $merchant_id;
         $this->secret_key = $secret_key;
-        $this->is_test = $is_test;
+        $this->is_test = (bool) $is_test;
     }
 
     public function get_url() {
