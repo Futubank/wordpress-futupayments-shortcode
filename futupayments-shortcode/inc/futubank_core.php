@@ -137,3 +137,70 @@ class FutubankForm {
         return $result;
     }
 }
+
+abstract class AbstractFutubankCallbackHandler {
+    /**
+    * @return FutubankForm
+    */
+    abstract protected function get_futubank_form();
+    abstract protected function load_order($order_id);
+    abstract protected function get_order_currency($order);
+    abstract protected function get_order_amount($order);
+    /**
+    * @return bool
+    */
+    abstract protected function is_order_completed($order);
+    /**
+    * @return bool
+    */
+    abstract protected function mark_order_as_completed($order, array $data);
+    /**
+    * @return bool
+    */
+    abstract protected function mark_order_as_error($order, array $data);
+
+    function show(array $data) {
+        $error = null;
+        $debug_messages = array();
+        $ff = $this->get_futubank_form();
+        
+        if (!$ff->is_signature_correct($data)) {
+            $error = 'Incorrect "signature"';
+        } else if (!($order_id = (int) $data['order_id'])) {
+            $error = 'Empty "order_id"';
+        } else if (!($order = $this->load_order($order_id))) {
+            $error = 'Unknown order_id';
+        } else if ($this->get_order_currency($order) != $data['currency']) {
+            $error = 'Currency mismatch: "' . $this->get_order_currency($order) . '" != "' . $data['currency'] . '"';
+        } else if ($this->get_order_amount($order) != $data['amount']) {
+            $error = 'Amount mismatch: "' . $this->get_order_amount($order) . '" != "' . $data['amount'] . '"';
+        } else if ($ff->is_order_completed($data)) {
+            $debug_messages[] = "info: order completed";
+            if ($this->is_order_completed($order)) {
+                $debug_messages[] = "order already marked as completed";
+            } else if ($this->mark_order_as_complred($order, $data)) {
+                $debug_messages[] = "mark order as completed";
+            } else {
+                $error = "Can't mark order as completed";
+            }
+        } else {
+            $debug_messages[] = "info: order not completed";
+            if (!$this->is_order_paid($order)) {
+                if ($this->mark_order_as_error($order, $data)) {
+                    $debug_messages[] = "mark order as error";
+                } else {
+                    $error = "Can't mark order as error";
+                }
+            }
+        }
+
+        if ($error) {
+            echo "ERROR: $error\n";
+        } else {
+            echo "OK$order_id\n";
+        }
+        foreach ($debug_messages as $msg) {
+            echo "...$msg\n";
+        }
+    }
+}

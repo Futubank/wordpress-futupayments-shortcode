@@ -11,7 +11,41 @@ if (!class_exists('FutubankForm')) {
     include(dirname(__FILE__) . '/inc/futubank_core.php');
 }
 
-class _FutupaymentsShortcode {
+
+class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
+    private $plugin;
+    function __construct(FutupaymentsShortcode $plugin) {
+        $this->plugin = $plugin;
+    }
+    protected function get_futubank_form() { 
+        return $this->plugin->get_futubank_form(); 
+    }
+    protected function load_order($order_id) { 
+        return $this->plugin->load_order();
+    }
+    protected function get_order_currency($order) {
+        return $order['currency'];
+    }
+    protected function get_order_amount($order) {
+        return $order['amount'];
+    }
+    protected function is_order_completed($order) {
+        return $order['status'] == FutupaymentsShortcode::STATUS_PAID;
+    }
+    protected function mark_order_as_completed($order, array $data) {
+        $order['status'] = FutupaymentsShortcode::STATUS_PAID;
+        $order['meta'] = $data['meta'];
+        return $this->plugin->save_order($order);
+    }
+    protected function mark_order_as_error($order, array $data) {
+        $order['status'] = FutupaymentsShortcode::STATUS_ERROR;
+        $order['meta'] = $data['meta'];
+        return $this->plugin->save_order($order);   
+    }
+}
+
+
+class FutupaymentsShortcode {
     const DB_VERSION     = '2';
 
     const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
@@ -299,12 +333,12 @@ class _FutupaymentsShortcode {
         return $order;
     }
     
-    private function load_order($order_id) {
+    public function load_order($order_id) {
         global $wpdb;
         return $wpdb->get_row('SELECT * FROM ' . $this->order_table . ' WHERE id = ' . $order_id, ARRAY_A);
     }
     
-    private function save_order(adday $order) {
+    private function save_order(array $order) {
         global $wpdb;
         $order_id = array_pop($order, 'id');
         return (bool) $wpdb->update( 
@@ -363,49 +397,50 @@ class _FutupaymentsShortcode {
     }
 
     private function callback_page() {
-        $ff = $this->get_futubank_form();
+        $cb = new FutupaymentsShortcodeCallback($this->get_futubank_form(), $this);
+        $cb->show($_POST);
 
-        $error = null;
-        if (!$ff->is_signature_correct($_POST)) {
-            $error = 'Incorrect "signature"';
-        } else if (!($order_id = (int) self::get($_POST, 'order_id', 0))) {
-            $error = 'Empty "order_id"';
-        } else if (!($order = $this->load_order($order_id))) {
-            $error = 'Unknown order_id';
-        } else if ($order['currency'] != self::get($_POST, 'currency')) {
-            $error = "Currency mismatch: '$order[currency]'' != '$_POST[currency]'";
-        } else if ($order['amount'] != self::get($_POST, 'amount')) {
-            $error = "Amount mismatch: '$order[amount]'' != '$_POST[amount]'";
-        }
+        // $error = null;
+        // if (!$ff->is_signature_correct($_POST)) {
+        //     $error = 'Incorrect "signature"';
+        // } else if (!($order_id = (int) self::get($_POST, 'order_id', 0))) {
+        //     $error = 'Empty "order_id"';
+        // } else if (!($order = $this->load_order($order_id))) {
+        //     $error = 'Unknown order_id';
+        // } else if ($order['currency'] != self::get($_POST, 'currency')) {
+        //     $error = "Currency mismatch: '$order[currency]'' != '$_POST[currency]'";
+        // } else if ($order['amount'] != self::get($_POST, 'amount')) {
+        //     $error = "Amount mismatch: '$order[amount]'' != '$_POST[amount]'";
+        // }
 
-        if ($error) {
-            echo "ERROR: $error\n";
-        } else {
-            echo "OK$order_id\n";
-            if ($ff->is_order_completed($_POST)) {
-                echo "order completed\n";
-                if ($this->change_status) {
-                    if ($order['status'] == self::STATUS_PAID) {
-                        echo "already paid\n";
-                    } else {
-                        $order['status'] = self::STATUS_PAID;
-                        $order['meta'] = self::get($_POST, 'meta', '');
-                        if ($this->save_order($order)) {
-                            echo "paid now\n";
-                        } else {
-                            echo "ERROR: can't change payment status\n";
-                        }
-                    }
-                }
-            } else {
-                echo "order not completed\n";
-                if ($order['status'] != self::STATUS_PAID) {
-                    $order['status'] = self::STATUS_ERROR;
-                    $order['meta'] = self::get($_POST, 'meta', '');
-                    $this->save_order($order);
-                }
-            }
-        }
+        // if ($error) {
+        //     echo "ERROR: $error\n";
+        // } else {
+        //     echo "OK$order_id\n";
+        //     if ($ff->is_order_completed($_POST)) {
+        //         echo "order completed\n";
+        //         if ($this->change_status) {
+        //             if ($order['status'] == self::STATUS_PAID) {
+        //                 echo "already paid\n";
+        //             } else {
+        //                 $order['status'] = self::STATUS_PAID;
+        //                 $order['meta'] = self::get($_POST, 'meta', '');
+        //                 if ($this->save_order($order)) {
+        //                     echo "paid now\n";
+        //                 } else {
+        //                     echo "ERROR: can't change payment status\n";
+        //                 }
+        //             }
+        //         }
+        //     } else {
+        //         echo "order not completed\n";
+        //         if ($order['status'] != self::STATUS_PAID) {
+        //             $order['status'] = self::STATUS_ERROR;
+        //             $order['meta'] = self::get($_POST, 'meta', '');
+        //             $this->save_order($order);
+        //         }
+        //     }
+        // }
     }
 
     private function create_plugin_tables() {
@@ -451,4 +486,4 @@ class _FutupaymentsShortcode {
     }
 }
 
-new _FutupaymentsShortcode;
+new FutupaymentsShortcode;
