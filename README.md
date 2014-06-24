@@ -9,7 +9,7 @@ wordpress-futupayments-shortcode
 1. Скачайте и распакуйте архив:
 
 ```
-https://github.com/Futubank/wordpress-futupayments-shortcode/archive/master.zip```
+https://github.com/Futubank/wordpress-futupayments-shortcode/archive/master.zip
 ```
 
 2. Скопируйте каталог futupayments-shortcode из архива в каталог `wp-content/plugins` вашего сайта
