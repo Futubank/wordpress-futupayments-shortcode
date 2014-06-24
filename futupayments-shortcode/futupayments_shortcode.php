@@ -291,7 +291,7 @@ class FutupaymentsShortcode {
                 $options['secret_key'],
                 $options['test_mode'],
                 'wordpress-futupayments-shortcode ' . self::VERSION,
-                "WordPress $wp_version",
+                "WordPress $wp_version"
             );
         } else {
             return false;

@@ -3,13 +3,13 @@
 	<thead>
 		<tr>
 			<th></th>
-			<th><?php _e('Date'); ?></th>
-			<th><?php _e('Amount'); ?></th>
-			<th><?php _e('Description'); ?></th>
-			<th><?php _e('Email'); ?></th>
-			<th><?php _e('Name'); ?></th>
-			<th><?php _e('Phone'); ?></th>
-			<th><?php _e('Status'); ?></th>
+			<th><?php _e('Date', 'futupayments'); ?></th>
+			<th><?php _e('Amount', 'futupayments'); ?></th>
+			<th><?php _e('Description', 'futupayments'); ?></th>
+			<th><?php _e('Email', 'futupayments'); ?></th>
+			<th><?php _e('Name', 'futupayments'); ?></th>
+			<th><?php _e('Phone', 'futupayments'); ?></th>
+			<th><?php _e('Status', 'futupayments'); ?></th>
 		</tr>
 	</thead>
 	<tbody>
