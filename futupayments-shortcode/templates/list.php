@@ -9,6 +9,7 @@
 			<th><?php _e('Email'); ?></th>
 			<th><?php _e('Name'); ?></th>
 			<th><?php _e('Phone'); ?></th>
+			<th><?php _e('Status'); ?></th>
 		</tr>
 	</thead>
 	<tbody>
@@ -21,7 +22,12 @@
 				<td><?php echo $row['client_email']; ?></td>
 				<td><?php echo $row['client_name']; ?></td>
 				<td><?php echo $row['client_phone']; ?></td>
+				<td><?php echo $statuses[$row['status']]; ?></td>
 			</tr>
 		<?php } ?>
 	</tbody>
 </table>
+
+<p>
+	<a href="<?php echo $_SERVER['REQUEST_URI'] . (count($_GET) > 0 ? '&' : '?') . 'limit=' . ($limit + $step); ?>"><?php _e('Show more', 'futupayments'); ?></a>
+</p>

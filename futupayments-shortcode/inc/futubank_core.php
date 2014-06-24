@@ -178,7 +178,7 @@ abstract class AbstractFutubankCallbackHandler {
             $debug_messages[] = "info: order completed";
             if ($this->is_order_completed($order)) {
                 $debug_messages[] = "order already marked as completed";
-            } else if ($this->mark_order_as_complred($order, $data)) {
+            } else if ($this->mark_order_as_completed($order, $data)) {
                 $debug_messages[] = "mark order as completed";
             } else {
                 $error = "Can't mark order as completed";

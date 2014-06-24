@@ -14,24 +14,12 @@ if (!class_exists('FutubankForm')) {
 
 class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
     private $plugin;
-    function __construct(FutupaymentsShortcode $plugin) {
-        $this->plugin = $plugin;
-    }
-    protected function get_futubank_form() { 
-        return $this->plugin->get_futubank_form(); 
-    }
-    protected function load_order($order_id) { 
-        return $this->plugin->load_order();
-    }
-    protected function get_order_currency($order) {
-        return $order['currency'];
-    }
-    protected function get_order_amount($order) {
-        return $order['amount'];
-    }
-    protected function is_order_completed($order) {
-        return $order['status'] == FutupaymentsShortcode::STATUS_PAID;
-    }
+    function __construct(FutupaymentsShortcode $plugin) { $this->plugin = $plugin; }
+    protected function get_futubank_form()        { return $this->plugin->get_futubank_form(); }
+    protected function load_order($order_id)      { return $this->plugin->load_order($order_id); }
+    protected function get_order_currency($order) { return $order['currency']; }
+    protected function get_order_amount($order)   { return $order['amount']; }
+    protected function is_order_completed($order) { return $order['status'] == FutupaymentsShortcode::STATUS_PAID; }
     protected function mark_order_as_completed($order, array $data) {
         $order['status'] = FutupaymentsShortcode::STATUS_PAID;
         $order['meta'] = $data['meta'];
@@ -192,9 +180,21 @@ class FutupaymentsShortcode {
         );
     }
 
-    function list_page() { 
+    function list_page() {
         global $wpdb;
-        $rows = $wpdb->get_results('SELECT * FROM ' . $this->order_table . ' ORDER BY id DESC', ARRAY_A);
+        $step = 2;
+        $limit = (int) self::get($_GET, 'limit', $step);
+        $rows = $wpdb->get_results(
+            'SELECT * FROM ' . $this->order_table . 
+            ' ORDER BY id DESC' .
+            ' LIMIT ' . $limit, 
+            ARRAY_A
+        );
+        $statuses = array(
+            self::STATUS_UNKNOWN => __('inprocess', 'futupayments'),
+            self::STATUS_PAID    => __('paid', 'futupayments'),
+            self::STATUS_ERROR   => __('error', 'futupayments'),
+        );
         include $this->templates_dir . 'list.php';
     }
 
@@ -280,7 +280,7 @@ class FutupaymentsShortcode {
              ' type="checkbox" value="on" ' . checked($options[$args['id']], 'on', false) . '>';
     }
 
-    private function get_futubank_form() {
+    function get_futubank_form() {
         $options = $this->get_options();
         if (
             $options['merchant_id'] && 
@@ -333,16 +333,17 @@ class FutupaymentsShortcode {
         return $order;
     }
     
-    public function load_order($order_id) {
+    function load_order($order_id) {
         global $wpdb;
         return $wpdb->get_row('SELECT * FROM ' . $this->order_table . ' WHERE id = ' . $order_id, ARRAY_A);
     }
     
-    private function save_order(array $order) {
+    function save_order(array $order) {
         global $wpdb;
-        $order_id = array_pop($order, 'id');
+        $order_id = $order['id'];
+        unset($order['id']); 
         return (bool) $wpdb->update( 
-            'table',
+            $this->order_table,            
             $order,
             array('id' => $order_id),
             $this->order_table_format,
@@ -392,12 +393,14 @@ class FutupaymentsShortcode {
 
     private function fail_page() {
         $ff = $this->get_futubank_form() or 
-        die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
+            die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
         include $this->templates_dir . 'fail.php';
     }
 
     private function callback_page() {
-        $cb = new FutupaymentsShortcodeCallback($this->get_futubank_form(), $this);
+        $this->get_futubank_form() or 
+            die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
+        $cb = new FutupaymentsShortcodeCallback($this);
         $cb->show($_POST);
 
         // $error = null;
