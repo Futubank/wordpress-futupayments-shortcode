@@ -1,4 +1,4 @@
-<h2><?php _e('Orders'); ?></h2>
+<h2><?php _e('Orders', 'futupayments'); ?></h2>
 <table class="wp-list-table widefat fixed">
 	<thead>
 		<tr>
@@ -15,7 +15,7 @@
 	<tbody>
 		<?php foreach($rows as $row) { ?>
 			<tr>
-				<td><?php _e('Order #'); ?><?php echo $row['id']; ?></td>
+				<td><?php _e('Order #', 'futupayments'); ?><?php echo $row['id']; ?></td>
 				<td><?php echo $row['creation_datetime']; ?></td>
 				<td><?php echo $row['amount']; ?>&nbsp;<?php echo $row['currency']; ?></td>
 				<td><?php echo $row['description']; ?></td>
