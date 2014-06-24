@@ -16,7 +16,7 @@ https://github.com/Futubank/wordpress-futupayments-shortcode/archive/master.zip`
 
 3. В администраторской панели вашего сайта откройте раздел «Плагины», найдите «Futupayments Shortcode» и нажмите «Активировать»:
 
-![Активация плагина](http://futubank.github.io/futuplugins/static/wp/install.png)
+![Активация плагина](http://futubank.github.io/futuplugins/static/wp/install.png =402x)
 
 Настройки в личном кабинете Futubank.com
 ========================================
@@ -25,7 +25,7 @@ https://github.com/Futubank/wordpress-futupayments-shortcode/archive/master.zip`
 
     http://вашсайт/?futupayment-callback
 
-![Уведомления](http://futubank.github.io/futuplugins/static/wp/trans.png)
+![Уведомления](http://futubank.github.io/futuplugins/static/wp/trans.png =364x)
 
 Настройки на вашем сайте
 ========================
@@ -34,7 +34,7 @@ https://github.com/Futubank/wordpress-futupayments-shortcode/archive/master.zip`
 
     Настройки → Futupayments Shortcode
 
-![Активация плагина](http://futubank.github.io/futuplugins/static/wp/settings.png)
+![Активация плагина](http://futubank.github.io/futuplugins/static/wp/settings.png =x226)
 
 Заполните поля «Merchant ID» и «Secret key». Эти значения уникальны для каждого магазина, посмотреть их можно в личном кабинете Futubank в разделе «Готовые модули».
 
