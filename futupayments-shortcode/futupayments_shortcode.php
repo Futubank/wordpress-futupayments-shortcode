@@ -182,7 +182,7 @@ class FutupaymentsShortcode {
 
     function list_page() {
         global $wpdb;
-        $step = 2;
+        $step = 50;
         $limit = (int) self::get($_GET, 'limit', $step);
         $rows = $wpdb->get_results(
             'SELECT * FROM ' . $this->order_table .
