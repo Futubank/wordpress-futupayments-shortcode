@@ -1,0 +1,100 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: futupayments 1.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2014-06-24 18:49+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: futupayments_shortcode.php:119 futupayments_shortcode.php:129
+#: futupayments_shortcode.php:133 futupayments_shortcode.php:137
+#: futupayments_shortcode.php:333 futupayments_shortcode.php:358
+#: futupayments_shortcode.php:366 futupayments_shortcode.php:392
+#: futupayments_shortcode.php:398 futupayments_shortcode.php:404
+msgid "FUTUPAYMENT ERROR"
+msgstr "Ошибка расширения futupayments"
+
+#: futupayments_shortcode.php:119 futupayments_shortcode.php:358
+#: futupayments_shortcode.php:392 futupayments_shortcode.php:398
+#: futupayments_shortcode.php:404
+msgid "plugin is not configured"
+msgstr "расширение не настроено"
+
+#: futupayments_shortcode.php:129
+msgid "amount required"
+msgstr "не указана сумма"
+
+#: futupayments_shortcode.php:133
+msgid "currency required"
+msgstr "не указана валюта"
+
+#: futupayments_shortcode.php:137
+msgid "description required"
+msgstr "не указано описание"
+
+#: futupayments_shortcode.php:166 futupayments_shortcode.php:212
+msgid "Payments via Futubank.com"
+msgstr "Платежи через Futubank.com"
+
+#: futupayments_shortcode.php:173 futupayments_shortcode.php:174
+msgid "Orders and payments"
+msgstr "Заказы и платежи"
+
+#: futupayments_shortcode.php:194
+msgid "inprocess"
+msgstr "в процессе"
+
+#: futupayments_shortcode.php:195
+msgid "paid"
+msgstr "оплачено"
+
+#: futupayments_shortcode.php:196
+msgid "error"
+msgstr "ошибка"
+
+#: futupayments_shortcode.php:218
+msgid "Merchant ID"
+msgstr ""
+
+#: futupayments_shortcode.php:226
+msgid "Secret key"
+msgstr ""
+
+#: futupayments_shortcode.php:234
+msgid "Test mode"
+msgstr "Тестовый режим"
+
+#: futupayments_shortcode.php:242
+msgid "Success URL"
+msgstr ""
+
+#: futupayments_shortcode.php:250
+msgid "Fail URL"
+msgstr ""
+
+#: futupayments_shortcode.php:258
+msgid "Pay button text"
+msgstr "Текст кнопки оплаты"
+
+#: futupayments_shortcode.php:312
+msgid "Pay from card"
+msgstr "Оплатить с карты"
+
+#: futupayments_shortcode.php:333
+msgid "can't create order"
+msgstr "невозможно создать заказ"
+
+#: futupayments_shortcode.php:366
+msgid "incorrect data"
+msgstr "некорректные данные"

@@ -3,7 +3,7 @@
   Plugin Name: Futupayments Shortcode
   Plugin URI: https://github.com/Futubank/wordpress-futupayments-shortcode
   Description: Allows you to use Futubank.com payment gateway with the shortcode button.
-  Version: 1.0
+  Version: 1.1
 */
 
 //include(dirname(__FILE__) . '/inc/widget.php');
@@ -15,11 +15,11 @@ if (!class_exists('FutubankForm')) {
 class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
     private $plugin;
     function __construct(FutupaymentsShortcode $plugin) { $this->plugin = $plugin; }
-    protected function get_futubank_form()        { return $this->plugin->get_futubank_form(); }
-    protected function load_order($order_id)      { return $this->plugin->load_order($order_id); }
-    protected function get_order_currency($order) { return $order['currency']; }
-    protected function get_order_amount($order)   { return $order['amount']; }
-    protected function is_order_completed($order) { return $order['status'] == FutupaymentsShortcode::STATUS_PAID; }
+    protected function get_futubank_form()              { return $this->plugin->get_futubank_form(); }
+    protected function load_order($order_id)            { return $this->plugin->load_order($order_id); }
+    protected function get_order_currency($order)       { return $order['currency']; }
+    protected function get_order_amount($order)         { return $order['amount']; }
+    protected function is_order_completed($order)       { return $order['status'] == FutupaymentsShortcode::STATUS_PAID; }
     protected function mark_order_as_completed($order, array $data) {
         $order['status'] = FutupaymentsShortcode::STATUS_PAID;
         $order['meta'] = $data['meta'];
@@ -34,7 +34,7 @@ class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
 
 
 class FutupaymentsShortcode {
-    const DB_VERSION     = '2';
+    const VERSION        = '1.1';
 
     const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
     const SETTINGS_SLUG  = 'futupayments-shortcode';
@@ -92,9 +92,9 @@ class FutupaymentsShortcode {
     }
 
     function plugins_loaded() {
-        if (get_site_option('futupayment_db_version') != self::DB_VERSION) {
+        if (get_site_option('futupayment_version') != self::VERSION) {
             $this->create_plugin_tables();
-            update_site_option('futupayment_db_version', self::DB_VERSION);
+            update_site_option('futupayment_version', self::VERSION);
         }
     }
 
@@ -290,7 +290,7 @@ class FutupaymentsShortcode {
                 $options['merchant_id'],
                 $options['secret_key'],
                 $options['test_mode'],
-                'wordpress-futupayments-shortcode 1.0',
+                'wordpress-futupayments-shortcode ' . self::VERSION,
                 "WordPress $wp_version",
             );
         } else {

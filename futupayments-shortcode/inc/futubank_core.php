@@ -45,8 +45,8 @@ class FutubankForm {
         $merchant_id,
         $secret_key,
         $is_test,
-        $plugininfo='',
-        $cmsinfo='',
+        $plugininfo = '',
+        $cmsinfo = ''
     ) {
         $this->merchant_id = $merchant_id;
         $this->secret_key = $secret_key;
