@@ -36,13 +36,23 @@ class FutubankForm {
     private $merchant_id;
     private $secret_key;
     private $is_test;
+    private $plugininfo;
+    private $cmsinfo;
 
     const HOST = 'https://secure.futubank.com';
 
-    public function __construct($merchant_id, $secret_key, $is_test) {
+    public function __construct(
+        $merchant_id,
+        $secret_key,
+        $is_test,
+        $plugininfo='',
+        $cmsinfo='',
+    ) {
         $this->merchant_id = $merchant_id;
         $this->secret_key = $secret_key;
         $this->is_test = (bool) $is_test;
+        $this->plugininfo = $plugininfo;
+        $this->cmsinfo = $cmsinfo;
     }
 
     public function get_url() {
@@ -63,13 +73,14 @@ class FutubankForm {
         $success_url,
         $fail_url,
         $cancel_url,
-        $meta='',
-        $description=''
+        $meta = '',
+        $description = ''
     ) {
         if (!$description) {
             $description = "Заказ №$order_id";
         }
         $form = array(
+            'is_test'        => $this->is_test,
             'merchant'       => $this->merchant_id,
             'unix_timestamp' => time(),
             'salt'           => $this->get_salt(32),
@@ -84,9 +95,19 @@ class FutubankForm {
             'fail_url'       => $fail_url,
             'cancel_url'     => $cancel_url,
             'meta'           => $meta,
+            'sysinfo'        => $this->get_sysinfo(),
         );
         $form['signature'] = $this->get_signature($form);
         return $form;
+    }
+
+    private function get_sysinfo() {
+        return ('{' .
+            '"json_enabled": ' . var_export(function_exists('json_encode')) . '", ' .
+            '"language": "PHP ' . phpversion() . '",' .
+            '"plugin": "' . $this->plugininfo . '",' .
+            '"cms": "' . $this->cmsinfo . '"' .
+        '}');
     }
 
     public function is_signature_correct(array $form) {
@@ -138,6 +159,7 @@ class FutubankForm {
     }
 }
 
+
 abstract class AbstractFutubankCallbackHandler {
     /**
     * @return FutubankForm
@@ -163,7 +185,7 @@ abstract class AbstractFutubankCallbackHandler {
         $error = null;
         $debug_messages = array();
         $ff = $this->get_futubank_form();
-        
+
         if (!$ff->is_signature_correct($data)) {
             $error = 'Incorrect "signature"';
         } else if (!($order_id = (int) $data['order_id'])) {

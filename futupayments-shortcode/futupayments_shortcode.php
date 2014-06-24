@@ -28,7 +28,7 @@ class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
     protected function mark_order_as_error($order, array $data) {
         $order['status'] = FutupaymentsShortcode::STATUS_ERROR;
         $order['meta'] = $data['meta'];
-        return $this->plugin->save_order($order);   
+        return $this->plugin->save_order($order);
     }
 }
 
@@ -38,12 +38,12 @@ class FutupaymentsShortcode {
 
     const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
     const SETTINGS_SLUG  = 'futupayments-shortcode';
-    
+
     const SUCCESS_URL    = '/?futupayment-success';
     const FAIL_URL       = '/?futupayment-fail';
     const SUBMIT_URL     = '/?futupayment-submit';
     const CALLBACK_URL   = '/?futupayment-callback';
-    
+
     const STATUS_UNKNOWN = 'unknown';
     const STATUS_PAID    = 'paid';
     const STATUS_ERROR   = 'error';
@@ -56,22 +56,22 @@ class FutupaymentsShortcode {
 
     function __construct() {
         global $wpdb;
-        
-        $db_prefix = $wpdb->prefix . 'futupayments_';    
+
+        $db_prefix = $wpdb->prefix . 'futupayments_';
         $this->order_table = $db_prefix . 'order';
-        
+
         $this->order_table_format = array(
             '%s',  # creation_datetime
             '%s',  # amount
-            '%s',  # currency 
-            '%s',  # description 
-            '%s',  # client_email 
-            '%s',  # client_name 
-            '%s',  # client_phone 
+            '%s',  # currency
+            '%s',  # description
+            '%s',  # client_email
+            '%s',  # client_name
+            '%s',  # client_phone
             '%s',  # status
             '%s',  # meta
         );
-        
+
         $this->invoice_hidden_fields =array(
             'amount',
             'currency',
@@ -161,12 +161,12 @@ class FutupaymentsShortcode {
         load_plugin_textdomain('futupayments', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
-    function admin_menu() { 
+    function admin_menu() {
         add_options_page(
             __('Payments via Futubank.com', 'futupayments'),
             'Futupayments Shortcode',
             'manage_options',
-            self::SETTINGS_SLUG, 
+            self::SETTINGS_SLUG,
             array($this, 'settings_page')
         );
         add_menu_page(
@@ -185,9 +185,9 @@ class FutupaymentsShortcode {
         $step = 2;
         $limit = (int) self::get($_GET, 'limit', $step);
         $rows = $wpdb->get_results(
-            'SELECT * FROM ' . $this->order_table . 
+            'SELECT * FROM ' . $this->order_table .
             ' ORDER BY id DESC' .
-            ' LIMIT ' . $limit, 
+            ' LIMIT ' . $limit,
             ARRAY_A
         );
         $statuses = array(
@@ -208,55 +208,55 @@ class FutupaymentsShortcode {
     function admin_init() {
         register_setting(self::SETTINGS_GROUP, self::SETTINGS_GROUP);
         add_settings_section(
-            self::SETTINGS_GROUP, 
-            __('Payments via Futubank.com', 'futupayments'), 
+            self::SETTINGS_GROUP,
+            __('Payments via Futubank.com', 'futupayments'),
             array($this, 'settings_intro_text'),
             self::SETTINGS_SLUG
         );
         add_settings_field(
-            'merchant_id', 
-            __('Merchant ID', 'futupayments'), 
-            array($this, 'char_field'), 
+            'merchant_id',
+            __('Merchant ID', 'futupayments'),
+            array($this, 'char_field'),
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
             array('id' => 'merchant_id')
         );
         add_settings_field(
-            'secret_key', 
-            __('Secret key', 'futupayments'), 
-            array($this, 'char_field'), 
+            'secret_key',
+            __('Secret key', 'futupayments'),
+            array($this, 'char_field'),
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
             array('id' => 'secret_key')
         );
         add_settings_field(
-            'test_mode', 
-            __('Test mode', 'futupayments'), 
-            array($this, 'boolean_field'), 
+            'test_mode',
+            __('Test mode', 'futupayments'),
+            array($this, 'boolean_field'),
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
             array('id' => 'test_mode')
         );
         add_settings_field(
-            'success_url', 
-            __('Success URL', 'futupayments'), 
-            array($this, 'char_field'), 
+            'success_url',
+            __('Success URL', 'futupayments'),
+            array($this, 'char_field'),
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
             array('id' => 'success_url')
         );
         add_settings_field(
-            'fail_url', 
-            __('Fail URL', 'futupayments'), 
-            array($this, 'char_field'), 
+            'fail_url',
+            __('Fail URL', 'futupayments'),
+            array($this, 'char_field'),
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
             array('id' => 'fail_url')
         );
         add_settings_field(
-            'pay_button_text', 
-            __('Pay button text', 'futupayments'), 
-            array($this, 'char_field'), 
+            'pay_button_text',
+            __('Pay button text', 'futupayments'),
+            array($this, 'char_field'),
             self::SETTINGS_SLUG,
             self::SETTINGS_GROUP,
             array('id' => 'pay_button_text')
@@ -265,37 +265,39 @@ class FutupaymentsShortcode {
 
     function settings_intro_text() {
         # FIXME
-        echo ''; 
+        echo '';
     }
 
     function char_field($args) {
         $options =  $this->get_options();
-        echo '<input name="' . self::SETTINGS_GROUP . '[' . $args['id'] . ']"' . 
+        echo '<input name="' . self::SETTINGS_GROUP . '[' . $args['id'] . ']"' .
              ' type="text" size="40" value="' . esc_attr($options[$args['id']]) . '">';
     }
 
     function boolean_field($args) {
         $options =  $this->get_options();
-        echo '<input name="' . self::SETTINGS_GROUP . '[' . $args['id'] . ']"' . 
+        echo '<input name="' . self::SETTINGS_GROUP . '[' . $args['id'] . ']"' .
              ' type="checkbox" value="on" ' . checked($options[$args['id']], 'on', false) . '>';
     }
 
     function get_futubank_form() {
         $options = $this->get_options();
         if (
-            $options['merchant_id'] && 
+            $options['merchant_id'] &&
             $options['secret_key']
         ) {
             return new FutubankForm(
-                $options['merchant_id'], 
-                $options['secret_key'], 
-                $options['test_mode']
+                $options['merchant_id'],
+                $options['secret_key'],
+                $options['test_mode'],
+                'wordpress-futupayments-shortcode 1.0',
+                "WordPress $wp_version",
             );
         } else {
             return false;
         }
     }
-    
+
     private function get_options() {
         $result = get_option(self::SETTINGS_GROUP);
         if (!$result) {
@@ -332,18 +334,18 @@ class FutupaymentsShortcode {
         $order['id'] = $wpdb->insert_id;
         return $order;
     }
-    
+
     function load_order($order_id) {
         global $wpdb;
         return $wpdb->get_row('SELECT * FROM ' . $this->order_table . ' WHERE id = ' . $order_id, ARRAY_A);
     }
-    
+
     function save_order(array $order) {
         global $wpdb;
         $order_id = $order['id'];
-        unset($order['id']); 
-        return (bool) $wpdb->update( 
-            $this->order_table,            
+        unset($order['id']);
+        return (bool) $wpdb->update(
+            $this->order_table,
             $order,
             array('id' => $order_id),
             $this->order_table_format,
@@ -352,9 +354,9 @@ class FutupaymentsShortcode {
     }
 
     private function submit_page() {
-        $ff = $this->get_futubank_form() or 
+        $ff = $this->get_futubank_form() or
             die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
-        
+
         $h = array();
         foreach ($this->invoice_hidden_fields() as $k) {
             $h[$k] = self::get($_POST, $k);
@@ -386,19 +388,19 @@ class FutupaymentsShortcode {
     }
 
     private function success_page() {
-        $ff = $this->get_futubank_form() or 
+        $ff = $this->get_futubank_form() or
             die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
         include $this->templates_dir . 'success.php';
     }
 
     private function fail_page() {
-        $ff = $this->get_futubank_form() or 
+        $ff = $this->get_futubank_form() or
             die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
         include $this->templates_dir . 'fail.php';
     }
 
     private function callback_page() {
-        $this->get_futubank_form() or 
+        $this->get_futubank_form() or
             die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
         $cb = new FutupaymentsShortcodeCallback($this);
         $cb->show($_POST);
