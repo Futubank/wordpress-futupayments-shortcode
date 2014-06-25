@@ -15,7 +15,13 @@
 	<tbody>
 		<?php foreach($rows as $row) { ?>
 			<tr>
-				<td><?php _e('Order #', 'futupayments'); ?><?php echo $row['id']; ?></td>
+				<td><?php
+					_e('Order #', 'futupayments');
+					echo $row['id'];
+					if ($row['testing']) {
+						_e(' (testing)', 'futupayments');
+					}
+				?></td>
 				<td><?php echo $row['creation_datetime']; ?></td>
 				<td><?php echo $row['amount']; ?>&nbsp;<?php echo $row['currency']; ?></td>
 				<td><?php echo $row['description']; ?></td>

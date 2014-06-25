@@ -39,9 +39,7 @@ class FutubankForm {
     private $plugininfo;
     private $cmsinfo;
 
-    const HOST = 'https://secure.futubank.com';
-
-    public function __construct(
+    function __construct(
         $merchant_id,
         $secret_key,
         $is_test,
@@ -55,15 +53,12 @@ class FutubankForm {
         $this->cmsinfo = $cmsinfo;
     }
 
-    public function get_url() {
-        if ($this->is_test) {
-            return self::HOST . '/testing-pay/';
-        } else {
-            return self::HOST . '/pay/';
-        }
+    function get_url() {
+        return 'https://secure.futubank.com/pay/';
+        // return 'http://127.0.0.1:8000/pay/';
     }
 
-    public function compose(
+    function compose(
         $amount,
         $currency,
         $order_id,
@@ -80,7 +75,7 @@ class FutubankForm {
             $description = "Заказ №$order_id";
         }
         $form = array(
-            'is_test'        => $this->is_test,
+            'testing'        => (int) $this->is_test,
             'merchant'       => $this->merchant_id,
             'unix_timestamp' => time(),
             'salt'           => $this->get_salt(32),
@@ -103,21 +98,21 @@ class FutubankForm {
 
     private function get_sysinfo() {
         return ('{' .
-            '"json_enabled": ' . var_export(function_exists('json_encode')) . '", ' .
-            '"language": "PHP ' . phpversion() . '",' .
-            '"plugin": "' . $this->plugininfo . '",' .
+            '"json_enabled": ' . var_export(function_exists('json_encode'), 1) . ', ' .
+            '"language": "PHP ' . phpversion() . '", ' .
+            '"plugin": "' . $this->plugininfo . '", ' .
             '"cms": "' . $this->cmsinfo . '"' .
         '}');
     }
 
-    public function is_signature_correct(array $form) {
+    function is_signature_correct(array $form) {
         if (!array_key_exists('signature', $form)) {
             return false;
         }
         return $this->get_signature($form) == $form['signature'];
     }
 
-    public function is_order_completed(array $form) {
+    function is_order_completed(array $form) {
         $is_testing_transaction = ($form['testing'] === '1');
         return ($form['state'] == 'COMPLETE') && ($is_testing_transaction == $this->is_test);
     }
@@ -130,13 +125,14 @@ class FutubankForm {
         return $result;
     }
 
-    public function get_signature(array $params, $key = 'signature') {
+    function get_signature(array $params, $key = 'signature') {
         $keys = array_keys($params);
         sort($keys);
         $chunks = array();
         foreach ($keys as $k) {
             if ($params[$k] && ($k != $key)) {
-                $chunks[] = $k . '=' . base64_encode($params[$k]);
+                $v = base64_encode((string) $params[$k]);
+                $chunks[] = "$k=$v";
             }
         }
         return $this->double_sha1(implode('&', $chunks));

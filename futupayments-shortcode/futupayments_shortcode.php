@@ -3,7 +3,7 @@
   Plugin Name: Futupayments Shortcode
   Plugin URI: https://github.com/Futubank/wordpress-futupayments-shortcode
   Description: Allows you to use Futubank.com payment gateway with the shortcode button.
-  Version: 1.1
+  Version: 1.01
 */
 
 //include(dirname(__FILE__) . '/inc/widget.php');
@@ -34,7 +34,7 @@ class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
 
 
 class FutupaymentsShortcode {
-    const VERSION        = '1.1';
+    const VERSION        = '1.01';
 
     const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
     const SETTINGS_SLUG  = 'futupayments-shortcode';
@@ -51,7 +51,7 @@ class FutupaymentsShortcode {
     private $order_table;
     private $order_table_format;
     private $templates_dir;
-    private $invoice_hidden_fields;
+    private $invoice_protected_fields;
     private $change_status = true;
 
     function __construct() {
@@ -69,20 +69,22 @@ class FutupaymentsShortcode {
             '%s',  # client_name
             '%s',  # client_phone
             '%s',  # status
+            '%d',  # testing
             '%s',  # meta
         );
 
-        $this->invoice_hidden_fields =array(
+        $this->invoice_protected_fields = array(
             'amount',
             'currency',
             'description',
+            'fields',
             'cancel_url',
         );
 
         $this->templates_dir = dirname(__FILE__) . '/templates/';
 
         add_action('init',  array($this, 'init'));
-        add_shortcode('futupayment', array($this, 'futupayment'));
+        add_shortcode('futupayment', array($this, 'futupayment_button'));
         if (is_admin()) {
             add_action('admin_menu', array($this, 'admin_menu'));
             add_action('plugins_loaded', array($this, 'plugins_loaded'));
@@ -112,49 +114,89 @@ class FutupaymentsShortcode {
         }
     }
 
-    function futupayment($atts) {
+    private function get_additional_fields(array $atts) {
+        $additional_fields = array(
+            'client_amount' => array(
+                'label'  => __('Amount', 'futupayments'),
+                'hidden' => true,
+                'type'   => 'number',
+            ),
+            'client_description' => array(
+                'label'  => __('Description', 'futupayments'),
+                'hidden' => true,
+                'type'   => 'text',
+            ),
+            'client_name' => array(
+                'label'  => __('Name', 'futupayments'),
+                'hidden' => true,
+                'type'   => 'text',
+            ),
+            'client_email' => array(
+                'label'  => __('Email', 'futupayments'),
+                'hidden' => true,
+                'type'   => 'email',
+            ),
+            'client_phone' => array(
+                'label'  => __('Phone', 'futupayments'),
+                'hidden' => true,
+                'type'   => 'text',
+            ),
+        );
+
+        foreach (preg_split("~\s*,\s*~", $atts['fields']) as $key) {
+            if (array_key_exists($key, $additional_fields)) {
+                $additional_fields[$key]['hidden'] = false;
+            }
+        }
+
+        if (!$atts['amount']) {
+            $additional_fields['client_amount']['hidden'] = false;
+        }
+
+        if (!$atts['description']) {
+            $additional_fields['client_description']['hidden'] = false;
+        }
+
+        return $additional_fields;
+    }
+
+    function futupayment_button(array $atts) {
         $ff = $this->get_futubank_form();
 
         if (!$ff) {
             return __('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments');
         }
 
+        $options = $this->get_options();
+
         $atts = shortcode_atts(array(
-            'amount'      => 0,
+            'amount'      => '',
             'currency'    => 'RUB',
             'description' => '',
+            'fields'      => '',
+            'button_text' => $options['pay_button_text'],
         ), $atts);
 
-        if (!$atts['amount']) {
-            return __('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('amount required', 'futupayments');
-        }
+        $additional_fields = $this->get_additional_fields($atts);
 
         if (!$atts['currency']) {
             return __('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('currency required', 'futupayments');
         }
 
-        if (!$atts['description']) {
-            return __('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('description required', 'futupayments');
-        }
-
         $atts['cancel_url'] = get_home_url() . $_SERVER['REQUEST_URI'];
-        $h = array();
-        foreach ($this->invoice_hidden_fields as $k) {
-            $h[$k] = $atts[$k];
+
+        $signed_fields = array();
+        foreach ($this->invoice_protected_fields as $k) {
+            $signed_fields[$k] = $atts[$k];
         }
-        $atts['signature'] = $ff->get_signature($h);
+        $atts['signature'] = $ff->get_signature($signed_fields);
 
-        $options = $this->get_options();
-
-        return (
-            '<form action="' . self::SUBMIT_URL . '" method="post">' .
-                FutubankForm::array_to_hidden_fields($atts) .
-                '<p class="submit">' .
-                    '<input type="submit" name="submit" class="button button-primary"' .
-                    ' value="' . esc_attr($options['pay_button_text']) . '">' .
-                '</p>' .
-            '</form>'
-        );
+        $url = self::SUBMIT_URL;
+        ob_start();
+        include $this->templates_dir . 'futupayment_button.php';
+        $result = ob_get_contents();
+        ob_end_clean();
+        return $result;
     }
 
     function init() {
@@ -317,19 +359,21 @@ class FutupaymentsShortcode {
     }
 
     private function create_order(array $data) {
-        global $wpdb;
+        $additional_fields = $this->get_additional_fields($data);
+        $options = $this->get_options();
         $order = array(
             'creation_datetime' => current_time('mysql'),
-            'amount'            => $data['amount'],
+            'amount'            => $data['amount'] ? $data['amount'] : $data['client_amount'],
             'currency'          => $data['currency'],
-            'description'       => $data['description'],
-            'client_email'      => self::get($data, 'client_email', ''),
-            'client_name'       => self::get($data, 'client_name', ''),
-            'client_phone'      => self::get($data, 'client_phone', ''),
+            'description'       => $data['description'] ? $data['description'] : $data['client_description'],
+            'client_email'      => $data['client_email'],
+            'client_name'       => $data['client_name'],
+            'client_phone'      => $data['client_phone'],
             'status'            => self::STATUS_UNKNOWN,
+            'testing'           => $options['test_mode'] ? 1 : 0,
             'meta'              => '',
         );
-
+        global $wpdb;
         $wpdb->insert($this->order_table, $order) or die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('can\'t create order', 'futupayments'));
         $order['id'] = $wpdb->insert_id;
         return $order;
@@ -358,7 +402,7 @@ class FutupaymentsShortcode {
             die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
 
         $h = array();
-        foreach ($this->invoice_hidden_fields() as $k) {
+        foreach ($this->invoice_protected_fields as $k) {
             $h[$k] = self::get($_POST, $k);
         }
 
@@ -404,48 +448,6 @@ class FutupaymentsShortcode {
             die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('plugin is not configured', 'futupayments'));
         $cb = new FutupaymentsShortcodeCallback($this);
         $cb->show($_POST);
-
-        // $error = null;
-        // if (!$ff->is_signature_correct($_POST)) {
-        //     $error = 'Incorrect "signature"';
-        // } else if (!($order_id = (int) self::get($_POST, 'order_id', 0))) {
-        //     $error = 'Empty "order_id"';
-        // } else if (!($order = $this->load_order($order_id))) {
-        //     $error = 'Unknown order_id';
-        // } else if ($order['currency'] != self::get($_POST, 'currency')) {
-        //     $error = "Currency mismatch: '$order[currency]'' != '$_POST[currency]'";
-        // } else if ($order['amount'] != self::get($_POST, 'amount')) {
-        //     $error = "Amount mismatch: '$order[amount]'' != '$_POST[amount]'";
-        // }
-
-        // if ($error) {
-        //     echo "ERROR: $error\n";
-        // } else {
-        //     echo "OK$order_id\n";
-        //     if ($ff->is_order_completed($_POST)) {
-        //         echo "order completed\n";
-        //         if ($this->change_status) {
-        //             if ($order['status'] == self::STATUS_PAID) {
-        //                 echo "already paid\n";
-        //             } else {
-        //                 $order['status'] = self::STATUS_PAID;
-        //                 $order['meta'] = self::get($_POST, 'meta', '');
-        //                 if ($this->save_order($order)) {
-        //                     echo "paid now\n";
-        //                 } else {
-        //                     echo "ERROR: can't change payment status\n";
-        //                 }
-        //             }
-        //         }
-        //     } else {
-        //         echo "order not completed\n";
-        //         if ($order['status'] != self::STATUS_PAID) {
-        //             $order['status'] = self::STATUS_ERROR;
-        //             $order['meta'] = self::get($_POST, 'meta', '');
-        //             $this->save_order($order);
-        //         }
-        //     }
-        // }
     }
 
     private function create_plugin_tables() {
@@ -476,6 +478,7 @@ class FutupaymentsShortcode {
                 `client_name` varchar(120) NOT NULL,
                 `client_phone` varchar(30) NOT NULL,
                 `status` varchar(30) NOT NULL default '" . self::STATUS_UNKNOWN . "',
+                `testing` int NOT NULL default '1',
                 `meta` longtext NOT NULL
             );
         ");
