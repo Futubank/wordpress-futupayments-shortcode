@@ -58,6 +58,11 @@ https://github.com/Futubank/wordpress-futupayments-shortcode/archive/master.zip
 [futupayment currency="RUB" description="Описание платежа" fields="client_name,client_phone"]
 ```
 
+Своя надпись на кнопке:
+```
+[futupayment amount="5" currency="RUB" description="Описание платежа" button_text="Оплатить 5 рублей"]
+```
+
 Список проведённых транзакций можно посмотреть как в личном кабинете на http://secure.futubank.com/, так и на вкладке «Заказы и платежи»:
 
 ![Список заказов](http://futubank.github.io/futuplugins/static/wp/list.png)
