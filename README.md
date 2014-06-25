@@ -1,7 +1,6 @@
 wordpress-futupayments-shortcode
 ================================
-Простой модуль для приёма оплаты с пластиковых карт через Futubank.com. Близкий аналог http://wordpress.org/plugins/robokassa-shortcode/installation/
-
+Простой модуль для приёма оплаты с банковских карт через Futubank.com.
 
 Установка на сервер
 ===================
