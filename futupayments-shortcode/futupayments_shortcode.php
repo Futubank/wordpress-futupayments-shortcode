@@ -333,7 +333,7 @@ class FutupaymentsShortcode {
                 $options['secret_key'],
                 $options['test_mode'],
                 'wordpress-futupayments-shortcode ' . self::VERSION,
-                "WordPress $wp_version"
+                "WordPress " . get_bloginfo('version')
             );
         } else {
             return false;
@@ -470,6 +470,7 @@ class FutupaymentsShortcode {
         dbDelta("
             CREATE TABLE `" . $this->order_table . "` (
                 `id` integer AUTO_INCREMENT NOT NULL,
+                PRIMARY KEY (`id`),
                 `creation_datetime` datetime NOT NULL,
                 `amount` numeric(10, 2) NOT NULL,
                 `currency` varchar(3) NOT NULL,
