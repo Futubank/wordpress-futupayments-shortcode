@@ -34,7 +34,8 @@ class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
 
 
 class FutupaymentsShortcode {
-    const VERSION        = '1.01';
+    const VERSION        = '1.3';
+    const NAME           = 'wordpress-futupayments-shortcode';
 
     const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
     const SETTINGS_SLUG  = 'futupayments-shortcode';
@@ -56,6 +57,8 @@ class FutupaymentsShortcode {
 
     function __construct() {
         global $wpdb;
+
+        $this->log('__construct');
 
         $db_prefix = $wpdb->prefix . 'futupayments_';
         $this->order_table = $db_prefix . 'order';
@@ -93,9 +96,21 @@ class FutupaymentsShortcode {
         add_action('parse_request', array($this, 'parse_request'));
     }
 
+    function log($msg) {
+        $dest = self::NAME . '.log';
+        $msg = "$msg\n";
+        if (!error_log($msg, 3, $dest)) {
+            error_log('[' . self::NAME . '] ' . $msg);
+        }
+    }
+
     function plugins_loaded() {
-        if (get_site_option('futupayment_version') != self::VERSION) {
+        $this->log('plugins_loaded()');
+        $version = get_site_option('futupayment_version');
+        if ($version != self::VERSION) {
+            $this->log('Prev version: ' . $version);
             $this->create_plugin_tables();
+            $this->log('Update to ' . self::VERSION);
             update_site_option('futupayment_version', self::VERSION);
         }
     }
@@ -161,6 +176,8 @@ class FutupaymentsShortcode {
     }
 
     function futupayment_button(array $atts) {
+        $this->log('futupayment_button()');
+
         $ff = $this->get_futubank_form();
 
         if (!$ff) {
@@ -200,10 +217,12 @@ class FutupaymentsShortcode {
     }
 
     function init() {
+        $this->log('init()');
         load_plugin_textdomain('futupayments', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
     function admin_menu() {
+        #$this->log('admin_menu()');
         add_options_page(
             __('Payments via Futubank.com', 'futupayments'),
             'Futupayments Shortcode',
@@ -223,6 +242,7 @@ class FutupaymentsShortcode {
     }
 
     function list_page() {
+        #$this->log('list_page()');
         global $wpdb;
         $step = 50;
         $limit = (int) self::get($_GET, 'limit', $step);
@@ -241,6 +261,7 @@ class FutupaymentsShortcode {
     }
 
     function settings_page() {
+        #$this->log('settings_page()');
         $group = self::SETTINGS_GROUP;
         $slug = self::SETTINGS_SLUG;
         $callback_url = get_home_url() . self::CALLBACK_URL;
@@ -248,6 +269,7 @@ class FutupaymentsShortcode {
     }
 
     function admin_init() {
+        $this->log('admin_init()');
         register_setting(self::SETTINGS_GROUP, self::SETTINGS_GROUP);
         add_settings_section(
             self::SETTINGS_GROUP,
@@ -332,7 +354,7 @@ class FutupaymentsShortcode {
                 $options['merchant_id'],
                 $options['secret_key'],
                 $options['test_mode'],
-                'wordpress-futupayments-shortcode ' . self::VERSION,
+                self::NAME . ' ' . self::VERSION,
                 "WordPress " . get_bloginfo('version')
             );
         } else {
@@ -359,6 +381,7 @@ class FutupaymentsShortcode {
     }
 
     private function create_order(array $data) {
+        $this->log('create_order(): ' . var_export($data, 1));
         $additional_fields = $this->get_additional_fields($data);
         $options = $this->get_options();
         $order = array(
@@ -376,6 +399,7 @@ class FutupaymentsShortcode {
         global $wpdb;
         $wpdb->insert($this->order_table, $order) or die(__('FUTUPAYMENT ERROR', 'futupayments') . ': ' . __('can\'t create order', 'futupayments'));
         $order['id'] = $wpdb->insert_id;
+        $this->log('order_id = ' . $order['id']);
         return $order;
     }
 
@@ -385,16 +409,19 @@ class FutupaymentsShortcode {
     }
 
     function save_order(array $order) {
+        $this->log('save_order(): ' . var_export($order, 1));
         global $wpdb;
         $order_id = $order['id'];
         unset($order['id']);
-        return (bool) $wpdb->update(
+        $result = (bool) $wpdb->update(
             $this->order_table,
             $order,
             array('id' => $order_id),
             $this->order_table_format,
             array('%d')
         );
+        $this->log('save_order result: ' . var_export($result, 1));
+        return $result;
     }
 
     private function submit_page() {
@@ -451,38 +478,41 @@ class FutupaymentsShortcode {
     }
 
     private function create_plugin_tables() {
+        $this->log('create_plugin_tables()');
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         // dbDelta("
-        //     CREATE TABLE `" . $this->db_prefix . "payment` (
-        //         `id` integer AUTO_INCREMENT NOT NULL,
-        //         `creation_datetime` datetime NOT NULL,
-        //         `transaction_id` bigint NOT NULL,
-        //         `testing` bool NOT NULL,
-        //         `amount` numeric(10, 2) NOT NULL,
-        //         `currency` varchar(3) NOT NULL,
-        //         `order_id` varchar(128) NOT NULL,
-        //         `state` varchar(10) NOT NULL,
-        //         `message` longtext NOT NULL,
-        //         `meta` longtext NOT NULL,
-        //         UNIQUE (`state`, `transaction_id`)
+        //     CREATE TABLE " . $this->db_prefix . "payment (
+        //         id integer AUTO_INCREMENT NOT NULL,
+        //         creation_datetime datetime NOT NULL,
+        //         transaction_id bigint NOT NULL,
+        //         testing bool NOT NULL,
+        //         amount numeric(10, 2) NOT NULL,
+        //         currency varchar(3) NOT NULL,
+        //         order_id varchar(128) NOT NULL,
+        //         state varchar(10) NOT NULL,
+        //         message longtext NOT NULL,
+        //         meta longtext NOT NULL,
+        //         UNIQUE (state, transaction_id)
         //     );
         // ");
-        dbDelta("
-            CREATE TABLE `" . $this->order_table . "` (
-                `id` integer AUTO_INCREMENT NOT NULL,
-                PRIMARY KEY (`id`),
-                `creation_datetime` datetime NOT NULL,
-                `amount` numeric(10, 2) NOT NULL,
-                `currency` varchar(3) NOT NULL,
-                `description` longtext NOT NULL,
-                `client_email` varchar(120) NOT NULL,
-                `client_name` varchar(120) NOT NULL,
-                `client_phone` varchar(30) NOT NULL,
-                `status` varchar(30) NOT NULL default '" . self::STATUS_UNKNOWN . "',
-                `testing` int NOT NULL default '1',
-                `meta` longtext NOT NULL
+        $result = dbDelta("
+            CREATE TABLE " . $this->order_table . " (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                creation_datetime datetime NOT NULL,
+                amount numeric(10, 2) NOT NULL,
+                currency VARCHAR(3) NOT NULL,
+                description longtext NOT NULL,
+                client_email VARCHAR(120) NOT NULL,
+                client_name VARCHAR(120) NOT NULL,
+                client_phone VARCHAR(30) NOT NULL,
+                status VARCHAR(30) NOT NULL default '" . self::STATUS_UNKNOWN . "',
+                testing int NOT NULL default '1',
+                meta longtext NOT NULL,
+                UNIQUE KEY id (id)
             );
         ");
+        $this->log('dbDelta result: ' . var_export($for_update, 1));
+        return $result;
     }
 
     ## helpers ##
