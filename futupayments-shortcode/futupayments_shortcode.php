@@ -3,7 +3,7 @@
   Plugin Name: Futupayments Shortcode
   Plugin URI: https://github.com/Futubank/wordpress-futupayments-shortcode
   Description: Allows you to use Futubank.com payment gateway with the shortcode button.
-  Version: 1.01
+  Version: 1.3
 */
 
 //include(dirname(__FILE__) . '/inc/widget.php');
