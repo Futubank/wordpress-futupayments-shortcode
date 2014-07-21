@@ -56,9 +56,8 @@ class FutupaymentsShortcode {
     private $change_status = true;
 
     function __construct() {
+        #$this->log('__construct');
         global $wpdb;
-
-        $this->log('__construct');
 
         $db_prefix = $wpdb->prefix . 'futupayments_';
         $this->order_table = $db_prefix . 'order';
@@ -97,9 +96,8 @@ class FutupaymentsShortcode {
     }
 
     function log($msg) {
-        $dest = self::NAME . '.log';
-        $msg = "$msg\n";
-        if (!error_log($msg, 3, $dest)) {
+        $dest = $_SERVER['HOME'] . '/' . self::NAME . '.log';
+        if (!@error_log("$msg\n", 3, $dest)) {
             error_log('[' . self::NAME . '] ' . $msg);
         }
     }
@@ -495,7 +493,7 @@ class FutupaymentsShortcode {
         //         UNIQUE (state, transaction_id)
         //     );
         // ");
-        $result = dbDelta("
+        $sql = "
             CREATE TABLE " . $this->order_table . " (
                 id mediumint(9) NOT NULL AUTO_INCREMENT,
                 creation_datetime datetime NOT NULL,
@@ -510,7 +508,9 @@ class FutupaymentsShortcode {
                 meta longtext NOT NULL,
                 UNIQUE KEY id (id)
             );
-        ");
+        ";
+        $this->log('dbDelta(): ' . $sql);
+        $result = dbDelta($sql);
         $this->log('dbDelta result: ' . var_export($for_update, 1));
         return $result;
     }
