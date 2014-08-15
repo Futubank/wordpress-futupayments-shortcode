@@ -249,7 +249,7 @@ abstract class AbstractFutubankCallbackHandler {
             }
         } else {
             $debug_messages[] = "info: order not completed";
-            if (!$this->is_order_paid($order)) {
+            if (!$this->is_order_completed($order)) {
                 if ($this->mark_order_as_error($order, $data)) {
                     $debug_messages[] = "mark order as error";
                 } else {
