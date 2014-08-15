@@ -4,15 +4,17 @@
  * ВНИМАНИЕ! Это общая часть всех плагинов. Оригинал всегда лежит по адресу:
  * https://github.com/Futubank/futuplugins/blob/master/php/futubank_core.php
  * =========================================================================
- * Вывод формы оплаты:
- *
+ * 
+ * 1. Вывод формы оплаты
+ * ---------------------
+ * 
  * $ff = new FutubankForm($merchant_id, $secret_key, $is_test);
  *
  * // URL для отправки формы:
  * $url = $ff->get_url();
  *
  * // значения полей формы
- * $form = compose(
+ * $form = $ff->compose(
  *     $amount,        // сумма заказа
  *     $currency,      // валюта заказа (поддерживается только "RUB")
  *     $order_id,      // номер заказа
@@ -23,7 +25,10 @@
  *     $fail_url,      // URL, куда направить клиента при ошибке
  *     $cancel_url,    // URL текущей страницы
  *     $meta,          // дополнительная информация в свободной форме (необязательно)
- *     $desctiption    // описание (необязательно)
+ *     $description    // описание (необязательно)
+ *     $recurring_frequency,    // Частота периодических платежей (необязятельно, один из вариантов 'day', 'week',
+ *                              //                                     'month', 'quartal', 'half-year', 'year')
+ *     $recurring_finish_date   // Конечная дата периодических платежей (необязательно, дата в формате 'YYYY-MM-DD')
  * );
  *
  * // далее можно самостоятельно вывести $form в виде hidden-полей,
@@ -31,6 +36,36 @@
  *
  * echo "<form action='$url' method='post'>" . FutubankForm::array_to_hidden_fields($form) . '<input type="submit"></form>';
  *
+ * 
+ * 2. Приём сообщений о выполненных транзакциях (http://yoursite.com/callback.php)
+ * -------------------------------------------------------------------------------
+ * // создаём класс обработчика транзакций, который знает всё про статусы заказов в вашей системе
+ * class MyCallbackHandler extends AbstractFutubankCallbackHandler {
+ *     // предположим, вся логика вашего плагина содержится в классе MyPlugin
+ *     private $plugin;
+ *     function __construct(MyPlugin $plugin)              { $this->plugin = $plugin; }
+ *     // определяем ключевые методы. Код методов приведён исключительно для примера
+ *     protected function get_futubank_form()              { return $this->plugin->get_futubank_form(); }
+ *     protected function load_order($order_id)            { return $this->plugin->load_order($order_id); }
+ *     protected function get_order_currency($order)       { return $order->getCurrency(); }
+ *     protected function get_order_amount($order)         { return $order->getAmount(); }
+ *     protected function is_order_completed($order)       { return $order->getStatus() == 'completed'; }
+ *     protected function mark_order_as_completed($order, array $data) {
+ *         $order->setStatus('completed');
+ *         $order->save()
+ *     }
+ *     protected function mark_order_as_error($order, array $data) {
+ *         $order->setStatus('error');
+ *         $order->save()
+ *     }
+ * }
+ * 
+ * // схема ориентироваочная и зависит от архитектуры вашей CMS или фреймворка
+ * $myplugin = new MyPlugin();
+ * $h = new MyCallbackHandler($myplugin);
+ * // обрабатываем сообщение от банка, пришедшее в _POST, и если всё хорошо, отмечаем заказ как оплаченный
+ * $h->show($_POST);
+ * 
  */
 class FutubankForm {
     private $merchant_id;
@@ -38,6 +73,7 @@ class FutubankForm {
     private $is_test;
     private $plugininfo;
     private $cmsinfo;
+    private $RECURRING_FREQS;    
 
     function __construct(
         $merchant_id,
@@ -51,6 +87,7 @@ class FutubankForm {
         $this->is_test = (bool) $is_test;
         $this->plugininfo = $plugininfo;
         $this->cmsinfo = $cmsinfo;
+        $this->RECURRING_FREQS = array('day', 'week', 'month', 'quartal', 'half-year', 'year');
     }
 
     function get_url() {
@@ -69,28 +106,37 @@ class FutubankForm {
         $fail_url,
         $cancel_url,
         $meta = '',
-        $description = ''
+        $description = '',
+        $recurring_frequency = '',
+        $recurring_finish_date = ''
     ) {
         if (!$description) {
             $description = "Заказ №$order_id";
         }
+        if ($recurring_frequency) {
+            if (!array_search(trim($recurring_frequency), $this->RECURRING_FREQS)) {
+                die('Неверное значение поля recurring_frequency');
+            }
+        }
         $form = array(
-            'testing'        => (int) $this->is_test,
-            'merchant'       => $this->merchant_id,
-            'unix_timestamp' => time(),
-            'salt'           => $this->get_salt(32),
-            'amount'         => $amount,
-            'currency'       => $currency,
-            'description'    => $description,
-            'order_id'       => $order_id,
-            'client_email'   => $client_email,
-            'client_name'    => $client_name,
-            'client_phone'   => $client_phone,
-            'success_url'    => $success_url,
-            'fail_url'       => $fail_url,
-            'cancel_url'     => $cancel_url,
-            'meta'           => $meta,
-            'sysinfo'        => $this->get_sysinfo(),
+            'testing'               => (int) $this->is_test,
+            'merchant'              => $this->merchant_id,
+            'unix_timestamp'        => time(),
+            'salt'                  => $this->get_salt(32),
+            'amount'                => $amount,
+            'currency'              => $currency,
+            'description'           => $description,
+            'order_id'              => $order_id,
+            'client_email'          => $client_email,
+            'client_name'           => $client_name,
+            'client_phone'          => $client_phone,
+            'success_url'           => $success_url,
+            'fail_url'              => $fail_url,
+            'cancel_url'            => $cancel_url,
+            'meta'                  => $meta,
+            'sysinfo'               => $this->get_sysinfo(),
+            'recurring_frequency'   => $recurring_frequency,
+            'recurring_finish_date' => $recurring_finish_date
         );
         $form['signature'] = $this->get_signature($form);
         return $form;
