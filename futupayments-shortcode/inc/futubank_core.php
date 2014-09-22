@@ -4,10 +4,10 @@
  * ВНИМАНИЕ! Это общая часть всех плагинов. Оригинал всегда лежит по адресу:
  * https://github.com/Futubank/futuplugins/blob/master/php/futubank_core.php
  * =========================================================================
- * 
+ *
  * 1. Вывод формы оплаты
  * ---------------------
- * 
+ *
  * $ff = new FutubankForm($merchant_id, $secret_key, $is_test);
  *
  * // URL для отправки формы:
@@ -25,10 +25,12 @@
  *     $fail_url,      // URL, куда направить клиента при ошибке
  *     $cancel_url,    // URL текущей страницы
  *     $meta,          // дополнительная информация в свободной форме (необязательно)
- *     $description    // описание (необязательно)
- *     $recurring_frequency,    // Частота периодических платежей (необязятельно, один из вариантов 'day', 'week',
- *                              //                                     'month', 'quartal', 'half-year', 'year')
- *     $recurring_finish_date   // Конечная дата периодических платежей (необязательно, дата в формате 'YYYY-MM-DD')
+ *     $description,    // описание (необязательно)
+ *     // для периодических платежей:
+ *     $recurring_frequency,   // частота периодических платежей (необязательно, 'day', 'week', 'month', 'quartal', 'half-year', 'year')
+ *     $recurring_finish_date, // конечная дата периодических платежей (необязательно, дата в формате 'YYYY-MM-DD')
+ *     $recurrind_tx_id,       // для рекуррентного платежа - id первой транзакции (необязательно)
+ *     $recurring_token        // для рекуррентного платежа - токен рекуррентного платежа (необязательно)
  * );
  *
  * // далее можно самостоятельно вывести $form в виде hidden-полей,
@@ -36,7 +38,7 @@
  *
  * echo "<form action='$url' method='post'>" . FutubankForm::array_to_hidden_fields($form) . '<input type="submit"></form>';
  *
- * 
+ *
  * 2. Приём сообщений о выполненных транзакциях (http://yoursite.com/callback.php)
  * -------------------------------------------------------------------------------
  * // создаём класс обработчика транзакций, который знает всё про статусы заказов в вашей системе
@@ -59,13 +61,28 @@
  *         $order->save()
  *     }
  * }
- * 
+ *
  * // схема ориентироваочная и зависит от архитектуры вашей CMS или фреймворка
  * $myplugin = new MyPlugin();
  * $h = new MyCallbackHandler($myplugin);
  * // обрабатываем сообщение от банка, пришедшее в _POST, и если всё хорошо, отмечаем заказ как оплаченный
  * $h->show($_POST);
- * 
+ *
+ *
+ * 3. Отправка рекуррентного платежа
+ * ---------------------------------
+ *
+ * $ff = new FutubankForm($merchant_id, $secret_key, $is_test);
+ *
+ * $result = $ff->rebill(
+ *       $amount,           // сумма заказа
+ *       $currency,         // валюта заказа (поддерживается только "RUB")
+ *       $order_id,         // номер заказа
+ *       $recurrind_tx_id,  // id транзакции, получен при первом платеже
+ *       $recurring_token,  // токен рекуррентной транзакции, получен при первом платеже
+ *       $description = ''  // описание заказа (необязательно)
+ * );
+ *
  */
 class FutubankForm {
     private $merchant_id;
@@ -73,7 +90,7 @@ class FutubankForm {
     private $is_test;
     private $plugininfo;
     private $cmsinfo;
-    private $RECURRING_FREQS;    
+    private $futugate_host;
 
     function __construct(
         $merchant_id,
@@ -85,14 +102,18 @@ class FutubankForm {
         $this->merchant_id = $merchant_id;
         $this->secret_key = $secret_key;
         $this->is_test = (bool) $is_test;
-        $this->plugininfo = $plugininfo;
+        $this->plugininfo = $plugininfo ?: 'Futuplugins/PHP v.' . phpversion();
         $this->cmsinfo = $cmsinfo;
-        $this->RECURRING_FREQS = array('day', 'week', 'month', 'quartal', 'half-year', 'year');
+        $this->futugate_host = 'https://secure.futubank.com';
+        //$this->futugate_host = 'http://127.0.0.1:8000';
     }
 
     function get_url() {
-        return 'https://secure.futubank.com/pay/';
-        // return 'http://127.0.0.1:8000/pay/';
+        return $this->futugate_host . '/pay/';
+    }
+
+    function get_rebill_url() {
+        return $this->futugate_host . '/api/v1/rebill/';
     }
 
     function compose(
@@ -112,11 +133,6 @@ class FutubankForm {
     ) {
         if (!$description) {
             $description = "Заказ №$order_id";
-        }
-        if ($recurring_frequency) {
-            if (!array_search(trim($recurring_frequency), $this->RECURRING_FREQS)) {
-                die('Неверное значение поля recurring_frequency');
-            }
         }
         $form = array(
             'testing'               => (int) $this->is_test,
@@ -176,9 +192,9 @@ class FutubankForm {
         sort($keys);
         $chunks = array();
         foreach ($keys as $k) {
-            if ($params[$k] && ($k != $key)) {
-                $v = base64_encode((string) $params[$k]);
-                $chunks[] = "$k=$v";
+            $v = (string) $params[$k];
+            if (($v !== '') && ($k != 'signature')) {
+                $chunks[] = $k . '=' . base64_encode($v);
             }
         }
         return $this->double_sha1(implode('&', $chunks));
@@ -198,6 +214,41 @@ class FutubankForm {
             $result .= $characters[rand(0, strlen($characters) - 1)];
         }
         return $result;
+    }
+
+    function rebill(
+        $amount,
+        $currency,
+        $order_id,
+        $recurrind_tx_id,
+        $recurring_token,
+        $description = ''
+    ){
+        if (!$description) {
+            $description = "Заказ №$order_id";
+        }
+        $form = array(
+            'testing'               => (int) $this->is_test,
+            'merchant'              => $this->merchant_id,
+            'unix_timestamp'        => time(),
+            'salt'                  => $this->get_salt(32),
+            'amount'                => $amount,
+            'currency'              => $currency,
+            'description'           => $description,
+            'order_id'              => $order_id,
+            'initial_transaction'   => $recurrind_tx_id,
+            'recurring_token'       => $recurring_token,
+        );
+        $form['signature'] = $this->get_signature($form);
+        $paramstr = http_build_query($form);
+        $ch = curl_init($this->get_rebill_url());
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->plugininfo);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $paramstr);
+        $result = curl_exec($ch);
+        curl_close($ch);
+        return json_decode($result);
     }
 }
 
