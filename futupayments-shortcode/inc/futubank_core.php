@@ -102,7 +102,7 @@ class FutubankForm {
         $this->merchant_id = $merchant_id;
         $this->secret_key = $secret_key;
         $this->is_test = (bool) $is_test;
-        $this->plugininfo = $plugininfo ?: 'Futuplugins/PHP v.' . phpversion();
+        $this->plugininfo = $plugininfo ? $plugininfo : 'Futuplugins/PHP v.' . phpversion();
         $this->cmsinfo = $cmsinfo;
         $this->futugate_host = 'https://secure.futubank.com';
         //$this->futugate_host = 'http://127.0.0.1:8000';
