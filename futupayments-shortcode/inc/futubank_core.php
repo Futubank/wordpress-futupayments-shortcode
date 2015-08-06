@@ -274,7 +274,20 @@ abstract class AbstractFutubankCallbackHandler {
     */
     abstract protected function mark_order_as_error($order, array $data);
 
+    private function remove_magic_quotes($data) {
+	if (get_magic_quotes_gpc()) {
+	    function stripslashes_gpc(&$value)
+	    {
+		$value = stripslashes($value);
+	    }
+	    array_walk_recursive($data, 'stripslashes_gpc');
+	}
+	return $data;
+    }
+
+
     function show(array $data) {
+	$data = $this->remove_magic_quotes($data);
         $error = null;
         $debug_messages = array();
         $ff = $this->get_futubank_form();
