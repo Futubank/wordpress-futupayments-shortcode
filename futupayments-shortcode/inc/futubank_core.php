@@ -388,11 +388,11 @@ class FutubankRecieptItem {
         $arr = str_split($s);
         $allowed_chars = str_split('0123456789"(),.:;- йцукенгшщзхъфывапролджэёячсмитьбюqwertyuiopasdfghjklzxcvbnm');
         foreach ($arr as $char) {
-            if (len($result) >= $max_chars) {
+            if (strlen($result) >= $max_chars) {
                 break;
             }
             if (in_array(strtolower($char), $allowed_chars)) {
-                $result += $char;
+                $result .= $char;
             }
         }
         return $result;
