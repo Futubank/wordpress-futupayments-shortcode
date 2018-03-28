@@ -3,7 +3,7 @@
   Plugin Name: Futupayments Shortcode
   Plugin URI: https://github.com/Futubank/wordpress-futupayments-shortcode
   Description: Allows you to use Futubank.com payment gateway with the shortcode button.
-  Version: 1.3
+  Version: 1.4
 */
 
 //include(dirname(__FILE__) . '/inc/widget.php');
@@ -34,7 +34,7 @@ class FutupaymentsShortcodeCallback extends AbstractFutubankCallbackHandler {
 
 
 class FutupaymentsShortcode {
-    const VERSION        = '1.3';
+    const VERSION        = '1.4';
     const NAME           = 'wordpress-futupayments-shortcode';
 
     const SETTINGS_GROUP = 'futupayments-shortcode-optionz';
@@ -53,10 +53,8 @@ class FutupaymentsShortcode {
     private $order_table_format;
     private $templates_dir;
     private $invoice_protected_fields;
-    private $change_status = true;
 
     function __construct() {
-        #$this->log('__construct');
         global $wpdb;
 
         $db_prefix = $wpdb->prefix . 'futupayments_';
@@ -292,6 +290,14 @@ class FutupaymentsShortcode {
             array('id' => 'secret_key')
         );
         add_settings_field(
+            'secret_key',
+            __('Host', 'futupayments'),
+            array($this, 'char_field'),
+            self::SETTINGS_SLUG,
+            self::SETTINGS_GROUP,
+            array('id' => 'futugate_host')
+        );
+        add_settings_field(
             'test_mode',
             __('Test mode', 'futupayments'),
             array($this, 'boolean_field'),
@@ -353,7 +359,8 @@ class FutupaymentsShortcode {
                 $options['secret_key'],
                 $options['test_mode'],
                 self::NAME . ' ' . self::VERSION,
-                "WordPress " . get_bloginfo('version')
+                "WordPress " . get_bloginfo('version'),
+                $options['futugate_host'] ?: 'https://secure.futubank.com'
             );
         } else {
             return false;
@@ -478,21 +485,6 @@ class FutupaymentsShortcode {
     private function create_plugin_tables() {
         $this->log('create_plugin_tables()');
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        // dbDelta("
-        //     CREATE TABLE " . $this->db_prefix . "payment (
-        //         id integer AUTO_INCREMENT NOT NULL,
-        //         creation_datetime datetime NOT NULL,
-        //         transaction_id bigint NOT NULL,
-        //         testing bool NOT NULL,
-        //         amount numeric(10, 2) NOT NULL,
-        //         currency varchar(3) NOT NULL,
-        //         order_id varchar(128) NOT NULL,
-        //         state varchar(10) NOT NULL,
-        //         message longtext NOT NULL,
-        //         meta longtext NOT NULL,
-        //         UNIQUE (state, transaction_id)
-        //     );
-        // ");
         $sql = "
             CREATE TABLE " . $this->order_table . " (
                 id mediumint(9) NOT NULL AUTO_INCREMENT,

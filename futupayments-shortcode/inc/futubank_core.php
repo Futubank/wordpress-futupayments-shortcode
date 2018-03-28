@@ -86,6 +86,35 @@
  * );
  *
  */
+if (!function_exists('mb_str_split')) {
+    /**
+     * Convert a multibyte string to an array
+     * 
+     * @param  string  $string       The input string.
+     * @param  integer $split_length Maximum length of the chunk.
+     * @param  string  $encoding     The encoding parameter is the character encoding.
+     * @return array
+     */
+    function mb_str_split($string, $split_length = 1, $encoding = null)
+    {
+        if (is_null($encoding)) {
+            $encoding = mb_internal_encoding();
+        }
+
+        if ($split_length < 1) {
+            return false;
+        }
+
+        $return_value = array();
+        $string_length  = mb_strlen($string, $encoding);
+        for ($i = 0; $i < $string_length; $i += $split_length)
+        {
+            $return_value[] = mb_substr($string, $i, $split_length, $encoding);
+        }
+        return $return_value;
+    }
+}
+
 class FutubankForm {
     private $merchant_id;
     private $secret_key;
@@ -94,20 +123,25 @@ class FutubankForm {
     private $cmsinfo;
     private $futugate_host;
 
+    const DEFAULT_HOST = 'https://secure.futubank.com';
+
     function __construct(
         $merchant_id,
         $secret_key,
         $is_test,
         $plugininfo = '',
-        $cmsinfo = ''
+        $cmsinfo = '',
+        $futugate_host = ''
     ) {
         $this->merchant_id = $merchant_id;
         $this->secret_key = $secret_key;
         $this->is_test = (bool) $is_test;
         $this->plugininfo = $plugininfo ?: 'Futuplugins/PHP v.' . phpversion();
         $this->cmsinfo = $cmsinfo;
-        $this->futugate_host = 'https://secure.futubank.com';
-        //$this->futugate_host = 'http://127.0.0.1:8000';
+        $this->futugate_host = $futugate_host;
+        if (!$this->futugate_host) {
+            $this->futugate_host = self::DEFAULT_HOST;
+        }
     }
 
     function get_url() {
@@ -385,13 +419,13 @@ class FutubankRecieptItem {
 
     private static function clean_title($s, $max_chars=64) {
         $result = '';
-        $arr = str_split($s);
-        $allowed_chars = str_split('0123456789"(),.:;- йцукенгшщзхъфывапролджэёячсмитьбюqwertyuiopasdfghjklzxcvbnm');
+        $arr = mb_str_split($s);
+        $allowed_chars = mb_str_split('0123456789"(),.:;- йцукенгшщзхъфывапролджэёячсмитьбюqwertyuiopasdfghjklzxcvbnm');
         foreach ($arr as $char) {
-            if (strlen($result) >= $max_chars) {
+            if (mb_strlen($result) >= $max_chars) {
                 break;
             }
-            if (in_array(strtolower($char), $allowed_chars)) {
+            if (in_array(mb_strtolower($char), $allowed_chars)) {
                 $result .= $char;
             }
         }
